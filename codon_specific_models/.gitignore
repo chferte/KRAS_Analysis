@@ -1,0 +1,16 @@
+compare_correlations_G12C_G12V.R
+._*.txt
+._*.xls
+._*.xlsx
+._*.rda
+._*.RData
+._*.pdf
+._*.gct
+*.txt
+*.xls
+*.xlsx
+*.rda
+*.RData
+*.pdf
+*.gct
+
