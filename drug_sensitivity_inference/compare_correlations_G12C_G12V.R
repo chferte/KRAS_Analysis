@@ -6,11 +6,10 @@ ccle.drugs <- read.delim(file="/home/cferte/FELLOW/cferte/KRAS_Analysis/drug_sen
 sanger.drugs <- read.delim(file="/home/cferte/FELLOW/cferte/KRAS_Analysis/drug_sensitivity_inference/Sanger_drugs.txt",header=T)
 sanger.drugs <- sanger.drugs[which(duplicated(sanger.drugs$DRUG.NAME)!=TRUE),c("DRUG.NAME","TARGET")]
 sanger.drugs$DRUG.NAME <- sub(pattern="-",replacement=".",x=sanger.drugs$DRUG.NAME)
-# compute the comparison between the correlatiosn of the G12C-WT and G12V-WT both with CCLE and Sanger drug sensitivity
 
+# compute the comparison between the correlatiosn of the G12C-WT and G12V-WT both with CCLE and Sanger drug sensitivity
 load("/home/cferte/FELLOW/cferte/KRAS_Analysis/results_drug_sens/G12C_WT_drug_correlations.rda")
 load("/home/cferte/FELLOW/cferte/KRAS_Analysis/results_drug_sens/G12V_WT_drug_correlations.rda")
-
 
 # make sure the correlations are coherently sorted
 tmp <- intersect(colnames(G12C_SENS_CCLE_COR),colnames(G12V_SENS_CCLE_COR))
@@ -22,7 +21,11 @@ tmp <- intersect(colnames(G12C_SENS_SANGER_COR),colnames(G12V_SENS_SANGER_COR))
 G12C_SENS_SANGER_COR <- G12C_SENS_SANGER_COR[,tmp]
 G12V_SENS_SANGER_COR <- G12V_SENS_SANGER_COR[,tmp]
 rm(tmp)
-
+par(mfrow=c(2,2))
+plot(apply(G12C_SENS_CCLE_COR,2,median))
+plot(apply(G12V_SENS_CCLE_COR,2,median))
+plot(apply(G12C_SENS_SANGER_COR,2,median))
+plot(apply(G12V_SENS_SANGER_COR,2,median))
 
 # function to apply the r to z transformation  (two sided test)
 diff.corr <- function( r1, n1, r2, n2 ){ 

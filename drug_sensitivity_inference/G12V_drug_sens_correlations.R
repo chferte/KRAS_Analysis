@@ -21,10 +21,10 @@ G12V_SENS <- sapply(colnames(drug),function(x){
   D <- rbind(D,p)
 })
 colnames(G12V_SENS) <- colnames(drug)
-drug.cor <- apply(G12V_SENS,2,median)
+drug.cor <- apply(G12V_SENS,2,function(x){median(x,na.rm=TRUE)})
 tmp <- names(drug.cor)[sort(drug.cor,decreasing=TRUE,index.return=TRUE)$ix]
 G12V_SENS <- G12V_SENS[,tmp]
-
+dim(G12V_SENS)
 
 ##################################################################################
 # compute the empirial p value for the CCLE corr
@@ -99,7 +99,7 @@ G12V_SENS <- sapply(colnames(drug),function(x){
   D <- rbind(D,p)
 })
 colnames(G12V_SENS) <- colnames(drug)
-drug.cor <- apply(G12V_SENS,2,median)
+drug.cor <- apply(G12V_SENS,2,function(x){median(x,na.rm=TRUE)})
 tmp <- names(drug.cor)[sort(drug.cor,decreasing=TRUE,index.return=TRUE)$ix]
 G12V_SENS <- G12V_SENS[,tmp]
 

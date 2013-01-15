@@ -21,7 +21,7 @@ par(mfrow=c(1,1),oma=c(4,2,2,2))
     D <- rbind(D,p)
   })
   colnames(G12C_SENS) <- colnames(drug)
-drug.cor <- apply(G12C_SENS,2,median)
+drug.cor <- apply(G12C_SENS,2,function(x){median(x,na.rm=TRUE)})
 tmp <- names(drug.cor)[sort(drug.cor,decreasing=TRUE,index.return=TRUE)$ix]
 G12C_SENS <- G12C_SENS[,tmp]
 
@@ -99,7 +99,7 @@ G12C_SENS <- sapply(colnames(drug),function(x){
   D <- rbind(D,p)
 })
 colnames(G12C_SENS) <- colnames(drug)
-drug.cor <- apply(G12C_SENS,2,median)
+drug.cor <- apply(G12C_SENS,2,function(x){median(x,na.rm=TRUE)})
 tmp <- names(drug.cor)[sort(drug.cor,decreasing=TRUE,index.return=TRUE)$ix]
 G12C_SENS <- G12C_SENS[,tmp]
 

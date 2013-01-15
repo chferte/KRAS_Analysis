@@ -301,6 +301,7 @@ while(models<N)
   models <- dim(yhat_SANGER)[2]
   } }
 rownames(selected) <- rownames(fit$beta)
+
 ###############################################################################
 # assess the model performance in terms of AUC
 ###############################################################################
