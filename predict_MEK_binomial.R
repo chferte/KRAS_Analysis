@@ -82,16 +82,16 @@ CCLE_RMA <- ccle_rma
 rm(ccle_rma,ccle_eset,map,mapCdfName)
 
 
-
-# save ccle rma
-ccle_rma <- Data(list(name = "CCLE_RMA", parentId = 'syn1589868'))
-ccle_rma <- createEntity(ccle_rma)
-
-# add object into the data entity
-ccle_rma <- addObject(ccle_rma,CCLE_RMA)
-
-# push the raw data into this entity
-ccle_rma <- storeEntity(entity=ccle_rma)
+# 
+# # save ccle rma
+# ccle_rma <- Data(list(name = "CCLE_RMA", parentId = 'syn1589868'))
+# ccle_rma <- createEntity(ccle_rma)
+# 
+# # add object into the data entity
+# ccle_rma <- addObject(ccle_rma,CCLE_RMA)
+# 
+# # push the raw data into this entity
+# ccle_rma <- storeEntity(entity=ccle_rma)
 
 # load the ccle drug information and make it coherent with ccle_EXP
 ccle_EXP <- CCLE_RMA
@@ -161,7 +161,7 @@ for(i in c(1:dim(A)[1]))
 }
 par(mfrow=c(1,1))
 hist(rat,breaks=100, main="correlation between the gene expression data from Sanger & CCLE",ylab="genes (N)")
-tmp <- rownames(A)[which(rat>.5)]
+tmp <- rownames(A)[which(rat>.7)]
 SANGER_EXP <- SANGER_EXP[tmp,]
 CCLE_EXP <- CCLE_EXP[tmp,]
 rm(A,B,rat,tmp,raton)
@@ -208,18 +208,24 @@ rm(sanger.drugs,ccle.drugs)
 
 # plot the distribution of the IC50 of the MEKi drugs
 par(mfrow=c(2,3), oma=c(1,1,5,1))
-plot(sort(SangerDrug[,MEK.sanger[1]]),main=paste(MEK.sanger[1]),ylab="IC50",pch=20)
-abline(h=quantile(SangerDrug[,MEK.sanger[1]],probs=.2,na.rm=TRUE),col="red")
-plot(sort(SangerDrug[,MEK.sanger[2]]),main=paste(MEK.sanger[2]),ylab="IC50",pch=20)
-abline(h=quantile(SangerDrug[,MEK.sanger[2]],probs=.2,na.rm=TRUE),col="red")
-plot(sort(SangerDrug[,MEK.sanger[3]]),main=paste(MEK.sanger[3]),ylab="IC50",pch=20)
-abline(h=quantile(SangerDrug[,MEK.sanger[3]],probs=.2,na.rm=TRUE),col="red")
-plot(sort(SangerDrug[,MEK.sanger[4]]),main=paste(MEK.sanger[4]),ylab="IC50",pch=20)
-abline(h=quantile(SangerDrug[,MEK.sanger[4]],probs=.2,na.rm=TRUE),col="red")
-plot(sort(ccle_drug[,MEK.ccle[1]]),main=paste(MEK.ccle[1]),ylab="IC50",pch=20)
-abline(h=quantile(ccle_drug[,MEK.ccle[1]],probs=.2,na.rm=TRUE),col="red")
-plot(sort(ccle_drug[,MEK.ccle[2]]),main=paste(MEK.ccle[2]),ylab="IC50",pch=20)
-abline(h=quantile(ccle_drug[,MEK.ccle[2]],probs=.2,na.rm=TRUE),col="red")
+plot(sort(SangerDrug[,MEK.sanger[1]]),main=paste(MEK.sanger[1]),ylab="IC50",pch=20,col="gray60",cex=.8)
+abline(h=quantile(SangerDrug[,MEK.sanger[1]],probs=.25,na.rm=TRUE),col="red")
+abline(h=quantile(SangerDrug[,MEK.sanger[1]],probs=.75,na.rm=TRUE),col="red")
+plot(sort(SangerDrug[,MEK.sanger[2]]),main=paste(MEK.sanger[2]),ylab="IC50",pch=20,col="gray60",cex=.8)
+abline(h=quantile(SangerDrug[,MEK.sanger[2]],probs=.25,na.rm=TRUE),col="red")
+abline(h=quantile(SangerDrug[,MEK.sanger[2]],probs=.75,na.rm=TRUE),col="red")
+plot(sort(SangerDrug[,MEK.sanger[3]]),main=paste(MEK.sanger[3]),ylab="IC50",pch=20,col="gray60",cex=.8)
+abline(h=quantile(SangerDrug[,MEK.sanger[3]],probs=.25,na.rm=TRUE),col="red")
+abline(h=quantile(SangerDrug[,MEK.sanger[3]],probs=.75,na.rm=TRUE),col="red")
+plot(sort(SangerDrug[,MEK.sanger[4]]),main=paste(MEK.sanger[4]),ylab="IC50",pch=20,col="gray60",cex=.8)
+abline(h=quantile(SangerDrug[,MEK.sanger[4]],probs=.25,na.rm=TRUE),col="red")
+abline(h=quantile(SangerDrug[,MEK.sanger[4]],probs=.75,na.rm=TRUE),col="red")
+plot(sort(ccle_drug[,MEK.ccle[1]]),main=paste(MEK.ccle[1]),ylab="IC50",pch=20,col="gray60",cex=.8)
+abline(h=quantile(ccle_drug[,MEK.ccle[1]],probs=.25,na.rm=TRUE),col="red")
+abline(h=quantile(ccle_drug[,MEK.ccle[1]],probs=.75,na.rm=TRUE),col="red")
+plot(sort(ccle_drug[,MEK.ccle[2]]),main=paste(MEK.ccle[2]),ylab="IC50",pch=20,col="gray60",cex=.8)
+abline(h=quantile(ccle_drug[,MEK.ccle[2]],probs=.25,na.rm=TRUE),col="red")
+abline(h=quantile(ccle_drug[,MEK.ccle[2]],probs=.75,na.rm=TRUE),col="red")
 title(main= "distribution of the IC50 across the MEK inhibitors in SANGER & CCLE db",outer=TRUE)
 
 # identify the cells that are evaluated for MEK inhibitors in sanger
@@ -227,6 +233,22 @@ MEK.cells.sanger <- rownames(SangerDrug)[-unique(c(which(is.na(SangerDrug[,MEK.s
 M <- SangerDrug[MEK.cells.sanger,MEK.sanger]
 MEK.cells.ccle <- rownames(ccle_drug)[-unique(c(which(is.na(ccle_drug[,MEK.ccle[1]])), which(is.na(ccle_drug[,MEK.ccle[2]]))))]
 M2 <- ccle_drug[MEK.cells.ccle,MEK.ccle]
+
+M3 <- ifelse(M[,1]< quantile(M[,1],probs=.1),1,0)
+M3 <- cbind(M3,ifelse(M[,2]< quantile(M[,1],probs=.2),1,0))
+M3 <- cbind(M3,ifelse(M[,3]< quantile(M[,3],probs=.2),1,0))
+M3 <- cbind(M3,ifelse(M[,4]< quantile(M[,4],probs=.2),1,0))
+M4 <- ifelse(M2[,1]< quantile(M2[,1],probs=.2),1,0)
+M4 <- cbind(M4,ifelse(M2[,2]< quantile(M2[,2],probs=.2),1,0))
+
+colnames(M3) <- colnames(M)
+rownames(M3) <- rownames(M)
+colnames(M4) <- colnames(M2)
+rownames(M4) <- rownames(M2)
+ccle.top <- ifelse(apply(M4,1,sum)==2,1,0)
+names(ccle.top) <- rownames(M4)
+
+table(ccle.top)
 
 require(car)
 scatterplotMatrix(M,main="correlations in the IC50 of the MEK inhibitors in Sanger")
@@ -238,32 +260,31 @@ scatterplotMatrix(normalizeCyclicLoess(M2),main="correlations in the IC50 of the
 cor(normalizeCyclicLoess(M2),method="spearman",use="pairwise.complete.obs")
 
 par(mfrow=c(2,3))
-fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~M[,1])))
+fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~M3[,1])))
 hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(M)[1]))
 table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~M[,2])))
+fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~M3[,2])))
 hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(M)[2]))
 table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~M[,3])))
+fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~M3[,3])))
 hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(M)[3]))
 table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~M[,4])))
+fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~M3[,4])))
 hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(M)[4]))
 table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(CCLE_EXP[,MEK.cells.ccle],model.matrix(~M2[,1])))
+fit <- eBayes(lmFit(CCLE_EXP[,MEK.cells.ccle],model.matrix(~M4[,1])))
 hist(fit$p.value[,2],breaks=100, main=paste("ccle Expr ~",colnames(M2)[1]))
 table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(CCLE_EXP[,MEK.cells.ccle],model.matrix(~M2[,2])))
+fit <- eBayes(lmFit(CCLE_EXP[,MEK.cells.ccle],model.matrix(~M4[,2])))
 hist(fit$p.value[,2],breaks=100, main=paste("ccle Expr ~",colnames(M2)[2]))
 table(fit$p.value[,2]<.05)
-title(main="univariate difefrential expression for sensitivity to MEKi across SANGER & CCLE",outer=TRUE)
+title(main="univariate difefrential expression for extreme sensitivity to MEKi across SANGER & CCLE",outer=TRUE)
 
 ###################################################################################################################
 # restrict to the common cell lines between ccle and sanger
 ###################################################################################################################
 
-tmp <- intersect(rownames(M),rownames(M2))
-
+tmp <- intersect(rownames(M3),rownames(M4))
 
 ################################################################################################################
 # load the mutations data
@@ -274,14 +295,16 @@ mutations.ccle <- exprs(mutations.ccle)
 tmp <- intersect(tmp,colnames(mutations.ccle))
 mutations.ccle <- mutations.ccle[,tmp]
 
-###################################################################################################################
-# GOLD standard: correlations between IC50 of CCLE and Sanger
-###################################################################################################################
 
-cor(M[tmp,],M2[tmp,],method="spearman")
-scatterplotMatrix(normalizeCyclicLoess(cbind(M[tmp,],M2[tmp,])))
-title(main="correlations in the IC50 of the MEK inhibitors 
-between CCLE & Sanger (Loess normalized)", outer=TRUE)
+
+# ###################################################################################################################
+# # GOLD standard: correlations between IC50 of CCLE and Sanger
+# ###################################################################################################################
+# 
+# cor(M[tmp,],M2[tmp,],method="spearman")
+# scatterplotMatrix(normalizeCyclicLoess(cbind(M[tmp,],M2[tmp,])))
+# title(main="correlations in the IC50 of the MEK inhibitors 
+# between CCLE & Sanger (Loess normalized)", outer=TRUE)
 
 ###################################################################################################################
 # train our predictive model of MEK response in ccle
@@ -292,15 +315,15 @@ between CCLE & Sanger (Loess normalized)", outer=TRUE)
 ###################################################################################################################
 
 # 
-IC50.MEK.ccle <- apply(normalizeCyclicLoess(M2[tmp,]),1,mean)
-IC50.MEK.sanger <- apply(normalizeCyclicLoess(M[tmp,]),1,mean)
-names(IC50.MEK.sanger) <- rownames(M[tmp,])
-names(IC50.MEK.ccle) <- rownames(M2[tmp,])
+# #IC50.MEK.ccle <- apply(normalizeCyclicLoess(M2[tmp,]),1,mean)
+# #IC50.MEK.sanger <- apply(normalizeCyclicLoess(M[tmp,]),1,mean)
+# names(IC50.MEK.sanger) <- rownames(M[tmp,])
+# names(IC50.MEK.ccle) <- rownames(M2[tmp,])
 
 par(mfrow=c(1,1))
 require(glmnet)
 
-N <- 20
+N <- 50
 fit <- c()
 selected <- c()
 yhat <- c()
@@ -309,24 +332,63 @@ i <- 0
 while(models<N)
 {
   
-  j <- sample(rownames(M2[tmp,]),replace=TRUE)
-  cv.fit <- cv.glmnet(t(rbind(CCLE_EXP[,j],mutations.ccle[,j])), M2[j,1], nfolds=3, alpha=.1)
- 
-  fit <- glmnet(x=t(rbind(CCLE_EXP[,j],mutations.ccle[,j])),y=M2[j,1],alpha=.1,lambda=cv.fit$lambda.min)
+  j <- c(names(which(ccle.top==1)),sample(names(which(ccle.top==0)),replace=TRUE))
+  cv.fit <- cv.glmnet(t(CCLE_EXP[,j]), y=ccle.top[j], nfolds=3, alpha=.01)
+  fit <- glmnet(x=t(CCLE_EXP[,j]),y=ccle.top[j],alpha=.01,lambda=cv.fit$lambda.min,family="binomial")
   if(length(which(abs(as.numeric(fit$beta))> 10^-5))>10)
   {
     i=i+1
     print(i)
     selected <- cbind(selected , as.numeric(fit$beta))
-    yhat <- cbind(yhat,predict(fit, t(rbind(SANGER_EXP[,tmp],mutations.ccle[,tmp])),type="link"))
+    yhat <- cbind(yhat,predict(fit, t(SANGER_EXP[,rownames(M3)]),type="response"))
     models <- dim(yhat)[2]
   } }
 
+AUC_RDEA119 <- c()
+#par(mfrow=c(2,2))
+require(ROCR)
+for (i in c(1:N)){
+  Pred <- prediction(as.numeric(yhat[,i]),as.numeric(M3[,1]))
+  Perf <- performance(prediction.obj=Pred,"tpr","fpr")
+  AUC <- performance(prediction.obj=Pred,"auc")
+  AUC_RDEA119 <- c(AUC_RDEA119,as.numeric(AUC@y.values))
+}
 
-boxplot(t(cor(M[tmp,],yhat,method="spearman")),outline=FALSE,ylim=c(0,1),ylab="Spearman rho")
-stripchart(list(RDEA119=t(cor(M[tmp,],yhat,method="spearman"))[,1],CI.1040=t(cor(M[tmp,],yhat,method="spearman"))[,2],PD.0325901=t(cor(M[tmp,],yhat,method="spearman"))[,3],AZ6244=t(cor(M[tmp,],yhat,method="spearman"))[,4]),add=TRUE,col="red",vertical=TRUE,method="jitter",pch=20)
-tmp1 <- cor(M[tmp,],M2[tmp,],method="spearman")
-stripchart(list(RDEA119=tmp1[1,1],CI.1040=tmp1[2,1],PD.0325901=tmp1[3,1],AZD6244=tmp1[4,1]), col="royalblue",pch=20,add=TRUE,vertical=TRUE,cex=2)
+AUC_CI.1040 <- c()
+#par(mfrow=c(2,2))
+require(ROCR)
+for (i in c(1:N)){
+  Pred <- prediction(as.numeric(yhat[,i]),as.numeric(M3[,2]))
+  Perf <- performance(prediction.obj=Pred,"tpr","fpr")
+  AUC <- performance(prediction.obj=Pred,"auc")
+  AUC_CI.1040 <- c(AUC_CI.1040,as.numeric(AUC@y.values))
+}
+
+AUC_PD.0325901 <- c()
+#par(mfrow=c(2,2))
+require(ROCR)
+for (i in c(1:N)){
+  Pred <- prediction(as.numeric(yhat[,i]),as.numeric(M3[,3]))
+  Perf <- performance(prediction.obj=Pred,"tpr","fpr")
+  AUC <- performance(prediction.obj=Pred,"auc")
+  AUC_PD.0325901 <- c(AUC_PD.0325901,as.numeric(AUC@y.values))
+}
+
+AUC_AZD6244 <- c()
+#par(mfrow=c(2,2))
+require(ROCR)
+for (i in c(1:N)){
+  Pred <- prediction(as.numeric(yhat[,i]),as.numeric(M3[,4]))
+  Perf <- performance(prediction.obj=Pred,"tpr","fpr")
+  AUC <- performance(prediction.obj=Pred,"auc")
+  AUC_AZD6244 <- c(AUC_AZD6244,as.numeric(AUC@y.values))
+}
+
+
+
+boxplot(cbind(AUC_RDEA119,AUC_CI.1040,AUC_PD.0325901,AUC_AZD6244),outline=FALSE,ylab="prediction of sensitivity (AUC)")
+stripchart(list(RDEA119=AUC_RDEA119,CI.1040=AUC_CI.1040,PD.0325901=AUC_PD.0325901,AZD6244=AUC_AZD6244),add=TRUE,method="jitter",vertical=TRUE,col="royalblue",pch=20)
+
 title( main=" bootstrapped elasticnet models of gene expression + hybrid capture sequencing 
-trained in 30 cell lines treated by PD.0325901
-        validation in the same cell lines processed by the Sanger group",outer=TRUE)
+trained in 57 ccle treated by PD.0325901 or AZD6244
+        validation in the 71 cell lines processed by the Sanger group",outer=TRUE)
