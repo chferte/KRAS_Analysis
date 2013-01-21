@@ -35,6 +35,18 @@ rownames(ccle_drug) <- sapply(strsplit(split="_",x=rownames(ccle_drug)),function
 ccle_drug <- ccle_drug[colnames(ccle_EXP),]
 CCLE_EXP <- ccle_EXP
 
+# load the KRAS_CCLE
+ccle_kras <- loadEntity('syn1443160')
+KRAS_CCLE <- ccle_kras$objects$KRAS_CCLE
+
+KRAS_CCLE <- substr((KRAS_CCLE),3,nchar(KRAS_CCLE))
+KRAS_CCLE[KRAS_CCLE==""] <- "WT"
+table(KRAS_CCLE)
+tmp <- ifelse(KRAS_CCLE %in% c("G12A","G12S","G13D","G13C","Q61H","Q61K","Q61L"),"rare",KRAS_CCLE)
+names(tmp) <- names(KRAS_CCLE)
+KRAS_CCLE <- tmp
+table(KRAS_CCLE)
+
 ##########################################
 # load the Sanger data 
 ##########################################
@@ -65,7 +77,7 @@ for(i in c(1:dim(A)[1]))
 }
 par(mfrow=c(1,1))
 hist(rat,breaks=100, main="correlation between the gene expression data from Sanger & CCLE",ylab="genes (N)")
-tmp <- rownames(A)[which(rat>.6)]
+tmp <- rownames(A)[which(rat>.5)]
 SANGER_EXP <- SANGER_EXP[tmp,]
 CCLE_EXP <- CCLE_EXP[tmp,]
 rm(A,B,rat,tmp,raton)
@@ -171,38 +183,104 @@ title(main="univariate difefrential expression for sensitivity to MEKi across SA
 
 
 # ################################################################################################################
-# # load the mutations data
+# # load the  mutations data
 # ################################################################################################################
-mutations.ccle <- loadEntity("syn1528027")
-mutations.ccle <- mutations.ccle$objects$eSet_hybrid
-mutations.ccle <- exprs(mutations.ccle)
-mutations.sanger <- read.csv("/home/cferte/FELLOW/cferte/gdsc_mutation_w3.csv",header=TRUE)
+
+# first load the ccle data
+MAF1 <- read.delim("/home/cferte/CCLE_hybrid_capture1650_hg19_NoCommonSNPs_NoNeutralVariants_CDS_2012.05.07.maf",header=TRUE)
+MAF1 <- MAF1[which(MAF1$Hugo_Symbol!="Unknown"),]
+MAF1 <- MAF1[,c("Hugo_Symbol","Tumor_Sample_Barcode","Protein_Change", "Genome_Change")]
+MAF1 <- MAF1[(grep(pattern="LUNG",x=MAF1$Tumor_Sample_Barcode)),]
+MAF1$Tumor_Sample_Barcode <- sapply(strsplit(split="_",x=MAF1$Tumor_Sample_Barcode),function(x){x[[1]]})
+MAF1$Protein_Change[MAF1$Protein_Change==""] <- MAF1$Genome_Change[ MAF1$Protein_Change==""]
+
+# create a bianry matrix full of zeros with colnames equal to the sampel names and rownames equal the MUTIDs
+MATMUT<-matrix(0,nrow=length(unique(MAF1$Hugo_Symbol)),ncol=length(unique(MAF1$Tumor_Sample_Barcode)))
+colnames(MATMUT) <- unique(MAF1$Tumor_Sample_Barcode)
+rownames(MATMUT) <- unique(MAF1$Hugo_Symbol)
+
+# assign the protein or genome change information to any sample mutated for any MUTID
+for(i in rownames(MATMUT)){
+  MATMUT[i,c(MAF1$Tumor_Sample_Barcode[which(MAF1$Hugo_Symbol==i)])] <- c(MAF1$Protein_Change[which(MAF1$Hugo_Symbol==i)])  
+}
+mutations.ccle <- MATMUT
+rm(MAF1,MATMUT)
+mutations.ccle <- as.data.frame(mutations.ccle[,rownames(M4)])
+
+
+# second, load the mutation data from Sanger
+mutations.sanger <- read.csv("/home/cferte/FELLOW/cferte/Sanger_gdsc_mutation_w3.csv",header=TRUE)
 rownames(mutations.sanger) <- toupper(gsub(pattern="-",replacement="",mutations.sanger$Cell.Line))
 mutations.sanger <- t(mutations.sanger[ grep(pattern="NSCLC",x=mutations.sanger$Tissue),])
 
+mutations.sanger[grep(pattern="na",x=mutations.sanger)] <- NA
+mutations.sanger[grep(pattern="wt",x=mutations.sanger)] <- "0"
+#KRAS_SANGER <- mutations.sanger["KRAS",]
+#KRAS_SANGER[KRAS_SANGER!=0] <- sapply(strsplit(KRAS_SANGER[KRAS_SANGER!=0],split="::"),function(x){x[[1]]})
+#mutations.sanger[grep(pattern="p.",x=mutations.sanger)] <- "1"
+
+# make the names of the genes coherents
 tmp <- intersect(rownames(mutations.sanger),rownames(mutations.ccle))
 mutations.ccle <- mutations.ccle[tmp,]
 mutations.sanger <- mutations.sanger[tmp,]
 
+# make the names of the samples coherents for ccle
 tmp <- intersect(rownames(M4),colnames(mutations.ccle))
 mutations.ccle <- mutations.ccle[,tmp]
 M4 <- M4[tmp,]
 
+# make the names of the samples coherents for sanger
 tmp <- intersect(rownames(M3),colnames(mutations.sanger))
 mutations.sanger <- mutations.sanger[,tmp]
 M3 <- M3[tmp,]
 
-mutations.sanger <- gsub(pattern="::0<cn<8",replacement="",x=mutations.sanger)
-mutations.sanger <- gsub(pattern="na",replacement=NA,x=mutations.sanger)
-mutations.sanger <- gsub(pattern="wt",replacement=0,x=mutations.sanger)
-grep("p.",x=mutations.sanger)
 
+# get rid of the NA's in Sanger mutations matrix
+KRAS_SANGER <- mutations.sanger["KRAS",]
+KRAS_SANGER[KRAS_SANGER!=0] <- sapply(strsplit(KRAS_SANGER[KRAS_SANGER!=0],split="::"),function(x){x[[1]]})
+mutations.sanger[grep(pattern="p.",x=mutations.sanger)] <- "1"
+
+# transform mutations.sanger into numeric and get rid of NAs
+tmp <- apply(mutations.sanger,2,as.numeric)
+tmp <- tmp[which(!is.na(tmp[,1])),]
+rownames(tmp) <- rownames(mutations.sanger)[which(!is.na(tmp[,1]))]
+mutations.sanger <- tmp
+rm(tmp)
+
+# restrict (again) to the common genes analyzed for both sanger and ccle
+tmp <- intersect(rownames(mutations.ccle),rownames(mutations.sanger))
+mutations.sanger <- mutations.sanger[tmp,]
+mutations.ccle <- mutations.ccle[tmp,]
+rm(tmp)
+
+# create the KRAS_CCLE
+KRAS_CCLE <- as.character(mutations.ccle["KRAS",])
+names(KRAS_CCLE) <- colnames(mutations.ccle)
+
+# set KRAS_CCLE and KRAS_SANGER to be a factor with same levels across ccle and sanger
+KRAS_CCLE[KRAS_CCLE %in% c("p.Q61H","p.Q61K","p.Q61L")] <- "p.Q61" 
+KRAS_SANGER[KRAS_SANGER %in% c("p.Q61H","p.Q61K","p.Q61L")] <- "p.Q61" 
+
+theseLevels  <- unique(c(KRAS_CCLE, KRAS_SANGER))
+
+KRAS_CCLE <- factor(KRAS_CCLE, levels=theseLevels)
+KRAS_SANGER <- factor(KRAS_SANGER,levels=theseLevels)
+
+kras.info.ccle <- t(model.matrix(~ -1 + KRAS_CCLE))
+rownames(kras.info.ccle) <- sub(pattern="_CCLE",replacement= "", x=rownames(kras.info.ccle), fixed=T)
+colnames(kras.info.ccle) <- names(KRAS_CCLE)
+kras.info.sanger <- t(model.matrix(~ -1 + KRAS_SANGER))
+rownames(kras.info.sanger) <- sub(pattern="_SANGER",replacement= "", x=rownames(kras.info.sanger), fixed=T)
+colnames(kras.info.sanger) <- names(KRAS_SANGER)
+
+# transform then mutations.ccle into a binary matrix
+mutations.ccle[mutations.ccle!="0"] <- "1"
 
 ###################################################################################################################
 # GOLD standard: correlations between IC50 of CCLE and Sanger
 ###################################################################################################################
-
-cor(M[tmp,],M2[tmp,],method="spearman")
+tmp <- intersect(rownames(M3),rownames(M4))
+cor(M3[tmp,],M4[tmp,],method="spearman")
 scatterplotMatrix(normalizeCyclicLoess(cbind(M[tmp,],M2[tmp,])))
 title(main="correlations in the IC50 of the MEK inhibitors 
 between CCLE & Sanger (Loess normalized)", outer=TRUE)
@@ -214,18 +292,14 @@ between CCLE & Sanger (Loess normalized)", outer=TRUE)
 # the robustness of the model is increased by boostrapping (n=100)
 # validate each model in BATTLE
 ###################################################################################################################
-ccle.top <- ifelse(apply(M4,1,sum)==2,1,0)
-names(ccle.top) <- rownames(M4)
-# 
-# IC50.MEK.ccle <- apply(normalizeCyclicLoess(M2[tmp,]),1,mean)
-# IC50.MEK.sanger <- apply(normalizeCyclicLoess(M[tmp,]),1,mean)
-# names(IC50.MEK.sanger) <- rownames(M[tmp,])
-# names(IC50.MEK.ccle) <- rownames(M2[tmp,])
+
 
 par(mfrow=c(1,1))
 require(glmnet)
+ccle.top <- ifelse(apply(M4,1,sum)==2,1,0)
+names(ccle.top) <- rownames(M4)
 
-N <- 100
+N <- 50
 fit <- c()
 selected <- c()
 yhat <- c()
@@ -236,8 +310,8 @@ bal <- c()
 while(models<N)
 {
 j <- c(names(which(ccle.top==1)),sample(names(which(ccle.top==0)),replace=TRUE))
-cv.fit <- cv.glmnet(t(CCLE_EXP[,j]), y=ccle.top[j], nfolds=3, alpha=.01)
-fit <- glmnet(x=t(CCLE_EXP[,j]),y=ccle.top[j],alpha=.01,lambda=cv.fit$lambda.min,family="binomial")
+cv.fit <- cv.glmnet(t(rbind(rbind(CCLE_EXP[,j],mutations.ccle[,j]),kras.info.ccle[,j])), y=ccle.top[j], nfolds=3, alpha=.0001)
+fit <- glmnet(x=t(rbind(rbind(CCLE_EXP[,j],mutations.ccle[,j]),kras.info.ccle[,j])),y=ccle.top[j],alpha=.0001,lambda=cv.fit$lambda.1se,family="binomial")
 if(length(which(abs(as.numeric(fit$beta))> 10^-5))>10)
 {
 i=i+1
@@ -247,48 +321,47 @@ selected <- cbind(selected , as.numeric(fit$beta))
 
 dev <- which(rownames(M3) %in% intersect(j,rownames(M3)))
 val <- rownames(M3)[-dev]
-yhat <- c(yhat,list(predict(fit, t(SANGER_EXP[,val]),type="response")))
+yhat <- c(yhat,list(predict(fit, t(rbind(SANGER_EXP[,val],mutations.sanger[,val])),type="response")))
 models <- length(yhat)
 } }
 
-AUC_RDEA119 <- c()
-#par(mfrow=c(2,2))
+# assess and plot the performance
 require(ROCR)
+
+AUC_RDEA119 <- c()
 for (i in c(1:N)){
 Pred <- prediction(as.numeric(yhat[[i]]),as.numeric(M3[rownames(yhat[[i]]),1]))
 Perf <- performance(prediction.obj=Pred,"tpr","fpr")
 AUC <- performance(prediction.obj=Pred,"auc")
 AUC_RDEA119 <- c(AUC_RDEA119,as.numeric(AUC@y.values))
 }
+
 AUC_CI.1040 <- c()
-#par(mfrow=c(2,2))
-require(ROCR)
 for (i in c(1:N)){
 Pred <- prediction(as.numeric(yhat[[i]]),as.numeric(M3[rownames(yhat[[i]]),2]))
 Perf <- performance(prediction.obj=Pred,"tpr","fpr")
 AUC <- performance(prediction.obj=Pred,"auc")
 AUC_CI.1040 <- c(AUC_CI.1040,as.numeric(AUC@y.values))
 }
+
 AUC_PD.0325901 <- c()
-#par(mfrow=c(2,2))
-require(ROCR)
 for (i in c(1:N)){
 Pred <- prediction(as.numeric(yhat[[i]]),as.numeric(M3[rownames(yhat[[i]]),3]))
 Perf <- performance(prediction.obj=Pred,"tpr","fpr")
 AUC <- performance(prediction.obj=Pred,"auc")
 AUC_PD.0325901 <- c(AUC_PD.0325901,as.numeric(AUC@y.values))
 }
+
 AUC_AZD6244 <- c()
-#par(mfrow=c(2,2))
-require(ROCR)
 for (i in c(1:N)){
 Pred <- prediction(as.numeric(yhat[[i]]),as.numeric(M3[rownames(yhat[[i]]),4]))
 Perf <- performance(prediction.obj=Pred,"tpr","fpr")
 AUC <- performance(prediction.obj=Pred,"auc")
 AUC_AZD6244 <- c(AUC_AZD6244,as.numeric(AUC@y.values))
 }
+
 boxplot(cbind(AUC_RDEA119,AUC_CI.1040,AUC_PD.0325901,AUC_AZD6244),outline=FALSE,ylab="prediction of sensitivity (AUC)")
 stripchart(list(RDEA119=AUC_RDEA119,CI.1040=AUC_CI.1040,PD.0325901=AUC_PD.0325901,AZD6244=AUC_AZD6244),add=TRUE,method="jitter",vertical=TRUE,col="royalblue",pch=20)
 title( main=" bootstrapped elasticnet models of gene expression + hybrid capture sequencing
-trained in 57 ccle treated by PD.0325901 or AZD6244
-validation in the 71 cell lines processed by the Sanger group",outer=TRUE)
+trained in 68 ccle treated by PD.0325901 or AZD6244
+validation in 35 cell lines processed by the Sanger group",outer=TRUE)
