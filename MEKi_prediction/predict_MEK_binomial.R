@@ -209,12 +209,14 @@ names(ccle.top) <- rownames(M4)
 par(mfrow=c(1,1))
 require(glmnet)
 
-N <- 10
+N <- 100
 fit <- c()
 selected <- c()
 yhat <- c()
 models <- 0
 i <- 0
+bal <- c()
+
 while(models<N)
 {
 j <- c(names(which(ccle.top==1)),sample(names(which(ccle.top==0)),replace=TRUE))
@@ -225,15 +227,19 @@ if(length(which(abs(as.numeric(fit$beta))> 10^-5))>10)
 i=i+1
 print(i)
 selected <- cbind(selected , as.numeric(fit$beta))
-yhat <- cbind(yhat,predict(fit, t(SANGER_EXP[,rownames(M3)]),type="response"))
-models <- dim(yhat)[2]
+
+
+dev <- which(rownames(M3) %in% intersect(j,rownames(M3)))
+val <- rownames(M3)[-dev]
+yhat <- c(yhat,list(predict(fit, t(SANGER_EXP[,val]),type="response")))
+models <- length(yhat)
 } }
 
 AUC_RDEA119 <- c()
 #par(mfrow=c(2,2))
 require(ROCR)
 for (i in c(1:N)){
-Pred <- prediction(as.numeric(yhat[,i]),as.numeric(M3[,1]))
+Pred <- prediction(as.numeric(yhat[[i]]),as.numeric(M3[rownames(yhat[[i]]),1]))
 Perf <- performance(prediction.obj=Pred,"tpr","fpr")
 AUC <- performance(prediction.obj=Pred,"auc")
 AUC_RDEA119 <- c(AUC_RDEA119,as.numeric(AUC@y.values))
@@ -242,7 +248,7 @@ AUC_CI.1040 <- c()
 #par(mfrow=c(2,2))
 require(ROCR)
 for (i in c(1:N)){
-Pred <- prediction(as.numeric(yhat[,i]),as.numeric(M3[,2]))
+Pred <- prediction(as.numeric(yhat[[i]]),as.numeric(M3[rownames(yhat[[i]]),2]))
 Perf <- performance(prediction.obj=Pred,"tpr","fpr")
 AUC <- performance(prediction.obj=Pred,"auc")
 AUC_CI.1040 <- c(AUC_CI.1040,as.numeric(AUC@y.values))
@@ -251,7 +257,7 @@ AUC_PD.0325901 <- c()
 #par(mfrow=c(2,2))
 require(ROCR)
 for (i in c(1:N)){
-Pred <- prediction(as.numeric(yhat[,i]),as.numeric(M3[,3]))
+Pred <- prediction(as.numeric(yhat[[i]]),as.numeric(M3[rownames(yhat[[i]]),3]))
 Perf <- performance(prediction.obj=Pred,"tpr","fpr")
 AUC <- performance(prediction.obj=Pred,"auc")
 AUC_PD.0325901 <- c(AUC_PD.0325901,as.numeric(AUC@y.values))
@@ -260,7 +266,7 @@ AUC_AZD6244 <- c()
 #par(mfrow=c(2,2))
 require(ROCR)
 for (i in c(1:N)){
-Pred <- prediction(as.numeric(yhat[,i]),as.numeric(M3[,4]))
+Pred <- prediction(as.numeric(yhat[[i]]),as.numeric(M3[rownames(yhat[[i]]),4]))
 Perf <- performance(prediction.obj=Pred,"tpr","fpr")
 AUC <- performance(prediction.obj=Pred,"auc")
 AUC_AZD6244 <- c(AUC_AZD6244,as.numeric(AUC@y.values))
