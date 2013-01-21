@@ -65,7 +65,7 @@ for(i in c(1:dim(A)[1]))
 }
 par(mfrow=c(1,1))
 hist(rat,breaks=100, main="correlation between the gene expression data from Sanger & CCLE",ylab="genes (N)")
-tmp <- rownames(A)[which(rat>.7)]
+tmp <- rownames(A)[which(rat>.6)]
 SANGER_EXP <- SANGER_EXP[tmp,]
 CCLE_EXP <- CCLE_EXP[tmp,]
 rm(A,B,rat,tmp,raton)
@@ -141,46 +141,62 @@ cor(normalizeCyclicLoess(M),method="spearman",use="pairwise.complete.obs")
 scatterplotMatrix(normalizeCyclicLoess(M2),main="correlations in the IC50 of the MEK inhibitors in ccle (Loess normalized)")
 cor(normalizeCyclicLoess(M2),method="spearman",use="pairwise.complete.obs")
 
-par(mfrow=c(2,3))
-fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~M[,1])))
-hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(M)[1]))
-table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~M[,2])))
-hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(M)[2]))
-table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~M[,3])))
-hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(M)[3]))
-table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~M[,4])))
-hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(M)[4]))
-table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(CCLE_EXP[,MEK.cells.ccle],model.matrix(~M2[,1])))
-hist(fit$p.value[,2],breaks=100, main=paste("ccle Expr ~",colnames(M2)[1]))
-table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(CCLE_EXP[,MEK.cells.ccle],model.matrix(~M2[,2])))
-hist(fit$p.value[,2],breaks=100, main=paste("ccle Expr ~",colnames(M2)[2]))
-table(fit$p.value[,2]<.05)
-title(main="univariate difefrential expression for sensitivity to MEKi across SANGER & CCLE",outer=TRUE)
-
-# ###################################################################################################################
-# # restrict to the common cell lines between ccle and sanger
-# ###################################################################################################################
-# 
-# tmp <- intersect(rownames(M),rownames(M2))
-# 
-# 
-# ################################################################################################################
-# # load the mutations data
-# ################################################################################################################
-# mutations.ccle <- loadEntity("syn1528027")
-# mutations.ccle <- mutations.ccle$objects$eSet_hybrid
-# mutations.ccle <- exprs(mutations.ccle)
-# tmp <- intersect(tmp,colnames(mutations.ccle))
-# mutations.ccle <- mutations.ccle[,tmp]
 
 # binomial transformation of the independant variables
 M3 <- apply(M,2,function(y){ifelse(y<quantile(y,probs=.2),1,0)})
 M4 <- apply(M2,2,function(y){ifelse(y<quantile(y,probs=.2),1,0)})
+
+
+# is there any signal in the differential expression
+par(mfrow=c(2,3))
+fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~M3[,1])))
+hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(M3)[1]))
+table(fit$p.value[,2]<.05)
+fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~M3[,2])))
+hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(M3)[2]))
+table(fit$p.value[,2]<.05)
+fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~M3[,3])))
+hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(M3)[3]))
+table(fit$p.value[,2]<.05)
+fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~M3[,4])))
+hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(M3)[4]))
+table(fit$p.value[,2]<.05)
+fit <- eBayes(lmFit(CCLE_EXP[,MEK.cells.ccle],model.matrix(~M4[,1])))
+hist(fit$p.value[,2],breaks=100, main=paste("ccle Expr ~",colnames(M4)[1]))
+table(fit$p.value[,2]<.05)
+fit <- eBayes(lmFit(CCLE_EXP[,MEK.cells.ccle],model.matrix(~M4[,2])))
+hist(fit$p.value[,2],breaks=100, main=paste("ccle Expr ~",colnames(M4)[2]))
+table(fit$p.value[,2]<.05)
+title(main="univariate difefrential expression for sensitivity to MEKi across SANGER & CCLE",outer=TRUE)
+
+
+# ################################################################################################################
+# # load the mutations data
+# ################################################################################################################
+mutations.ccle <- loadEntity("syn1528027")
+mutations.ccle <- mutations.ccle$objects$eSet_hybrid
+mutations.ccle <- exprs(mutations.ccle)
+mutations.sanger <- read.csv("/home/cferte/FELLOW/cferte/gdsc_mutation_w3.csv",header=TRUE)
+rownames(mutations.sanger) <- toupper(gsub(pattern="-",replacement="",mutations.sanger$Cell.Line))
+mutations.sanger <- t(mutations.sanger[ grep(pattern="NSCLC",x=mutations.sanger$Tissue),])
+
+tmp <- intersect(rownames(mutations.sanger),rownames(mutations.ccle))
+mutations.ccle <- mutations.ccle[tmp,]
+mutations.sanger <- mutations.sanger[tmp,]
+
+tmp <- intersect(rownames(M4),colnames(mutations.ccle))
+mutations.ccle <- mutations.ccle[,tmp]
+M4 <- M4[tmp,]
+
+tmp <- intersect(rownames(M3),colnames(mutations.sanger))
+mutations.sanger <- mutations.sanger[,tmp]
+M3 <- M3[tmp,]
+
+mutations.sanger <- gsub(pattern="::0<cn<8",replacement="",x=mutations.sanger)
+mutations.sanger <- gsub(pattern="na",replacement=NA,x=mutations.sanger)
+mutations.sanger <- gsub(pattern="wt",replacement=0,x=mutations.sanger)
+grep("p.",x=mutations.sanger)
+
 
 ###################################################################################################################
 # GOLD standard: correlations between IC50 of CCLE and Sanger
