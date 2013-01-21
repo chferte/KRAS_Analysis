@@ -77,7 +77,7 @@ for(i in c(1:dim(A)[1]))
 }
 par(mfrow=c(1,1))
 hist(rat,breaks=100, main="correlation between the gene expression data from Sanger & CCLE",ylab="genes (N)")
-tmp <- rownames(A)[which(rat>.5)]
+tmp <- rownames(A)[which(rat>.6)]
 SANGER_EXP <- SANGER_EXP[tmp,]
 CCLE_EXP <- CCLE_EXP[tmp,]
 rm(A,B,rat,tmp,raton)
@@ -103,7 +103,7 @@ SANGER_EXP <- normalize_to_X(rowMeans(CCLE_EXP),apply(CCLE_EXP,1,sd),SANGER_EXP)
 #####################################################################################
 
 tmp <- apply(CCLE_EXP,1,sd)
-tmp1 <- which(tmp>quantile(tmp,probs=.1))
+tmp1 <- which(tmp>quantile(tmp,probs=.3))
 CCLE_EXP <- CCLE_EXP[tmp1,]
 SANGER_EXP <- SANGER_EXP[tmp1,]
 rm(tmp1,tmp)
@@ -205,7 +205,7 @@ for(i in rownames(MATMUT)){
 }
 mutations.ccle <- MATMUT
 rm(MAF1,MATMUT)
-mutations.ccle <- as.data.frame(mutations.ccle[,rownames(M4)])
+mutations.ccle <- mutations.ccle[,rownames(M4)]
 
 
 # second, load the mutation data from Sanger
@@ -260,9 +260,14 @@ names(KRAS_CCLE) <- colnames(mutations.ccle)
 # set KRAS_CCLE and KRAS_SANGER to be a factor with same levels across ccle and sanger
 KRAS_CCLE[KRAS_CCLE %in% c("p.Q61H","p.Q61K","p.Q61L")] <- "p.Q61" 
 KRAS_SANGER[KRAS_SANGER %in% c("p.Q61H","p.Q61K","p.Q61L")] <- "p.Q61" 
+KRAS_CCLE[KRAS_CCLE %in% c("p.G13C","p.G13D")] <- "p.G13" 
+KRAS_SANGER[KRAS_SANGER %in% c("p.G13C","p.G13D")] <- "p.G13" 
+KRAS_SANGER[KRAS_SANGER %in% c("p.G12S","p.G12F","p.G12D","p.G12A")] <- "rare" 
+KRAS_CCLE[KRAS_CCLE %in% c("p.G12S","p.G12F","p.G12D","p.G12A")] <- "rare" 
 
 theseLevels  <- unique(c(KRAS_CCLE, KRAS_SANGER))
-
+table(KRAS_CCLE)
+table(KRAS_SANGER)
 KRAS_CCLE <- factor(KRAS_CCLE, levels=theseLevels)
 KRAS_SANGER <- factor(KRAS_SANGER,levels=theseLevels)
 
@@ -275,6 +280,11 @@ colnames(kras.info.sanger) <- names(KRAS_SANGER)
 
 # transform then mutations.ccle into a binary matrix
 mutations.ccle[mutations.ccle!="0"] <- "1"
+tmp <- apply(mutations.ccle,2,as.numeric)
+rownames(tmp) <- paste(rownames(mutations.ccle),"_mut",sep="")
+colnames(tmp) <- colnames(mutations.ccle)
+mutations.ccle <- tmp
+rm(tmp)
 
 ###################################################################################################################
 # GOLD standard: correlations between IC50 of CCLE and Sanger
@@ -310,8 +320,9 @@ bal <- c()
 while(models<N)
 {
 j <- c(names(which(ccle.top==1)),sample(names(which(ccle.top==0)),replace=TRUE))
-cv.fit <- cv.glmnet(t(rbind(rbind(CCLE_EXP[,j],mutations.ccle[,j]),kras.info.ccle[,j])), y=ccle.top[j], nfolds=3, alpha=.0001)
-fit <- glmnet(x=t(rbind(rbind(CCLE_EXP[,j],mutations.ccle[,j]),kras.info.ccle[,j])),y=ccle.top[j],alpha=.0001,lambda=cv.fit$lambda.1se,family="binomial")
+
+cv.fit <- cv.glmnet(t(rbind(rbind(CCLE_EXP[,j],mutations.ccle[,j]),kras.info.ccle[,j])), y=ccle.top[j], nfolds=3, alpha=.1)
+fit <- glmnet(x=t(rbind(rbind(CCLE_EXP[,j],mutations.ccle[,j]),kras.info.ccle[,j])),y=ccle.top[j],alpha=.1,lambda=cv.fit$lambda.1se,family="binomial")
 if(length(which(abs(as.numeric(fit$beta))> 10^-5))>10)
 {
 i=i+1
@@ -321,7 +332,7 @@ selected <- cbind(selected , as.numeric(fit$beta))
 
 dev <- which(rownames(M3) %in% intersect(j,rownames(M3)))
 val <- rownames(M3)[-dev]
-yhat <- c(yhat,list(predict(fit, t(rbind(SANGER_EXP[,val],mutations.sanger[,val])),type="response")))
+yhat <- c(yhat,list(predict(fit, t(rbind(rbind(SANGER_EXP[,val],mutations.sanger[,val]),kras.info.sanger[,val])),type="response")))
 models <- length(yhat)
 } }
 
@@ -360,8 +371,16 @@ AUC <- performance(prediction.obj=Pred,"auc")
 AUC_AZD6244 <- c(AUC_AZD6244,as.numeric(AUC@y.values))
 }
 
-boxplot(cbind(AUC_RDEA119,AUC_CI.1040,AUC_PD.0325901,AUC_AZD6244),outline=FALSE,ylab="prediction of sensitivity (AUC)")
+boxplot(cbind(AUC_RDEA119,AUC_CI.1040,AUC_PD.0325901,AUC_AZD6244),outline=FALSE,ylab="prediction of sensitivity (AUC)",ylim=c(0.3,.9))
 stripchart(list(RDEA119=AUC_RDEA119,CI.1040=AUC_CI.1040,PD.0325901=AUC_PD.0325901,AZD6244=AUC_AZD6244),add=TRUE,method="jitter",vertical=TRUE,col="royalblue",pch=20)
 title( main=" bootstrapped elasticnet models of gene expression + hybrid capture sequencing
 trained in 68 ccle treated by PD.0325901 or AZD6244
 validation in 35 cell lines processed by the Sanger group",outer=TRUE)
+
+# extract the biological meaning
+rownames(selected) <- rownames(fit$beta)
+mus <- selected
+mus[mus!=0] <- 1
+plot(density(apply(mus,2,sum)))
+rownames(selected)[which(apply(mus,1,sum)>quantile(apply(mus,1,sum),probs=.95))]
+sort(apply(mus,1,sum),decreasing=TRUE)[1:20]
