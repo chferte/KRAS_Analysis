@@ -103,7 +103,7 @@ SANGER_EXP <- normalize_to_X(rowMeans(CCLE_EXP),apply(CCLE_EXP,1,sd),SANGER_EXP)
 #####################################################################################
 
 tmp <- apply(CCLE_EXP,1,sd)
-tmp1 <- which(tmp>quantile(tmp,probs=.3))
+tmp1 <- which(tmp>quantile(tmp,probs=.2))
 CCLE_EXP <- CCLE_EXP[tmp1,]
 SANGER_EXP <- SANGER_EXP[tmp1,]
 rm(tmp1,tmp)
@@ -124,18 +124,24 @@ rm(sanger.drugs,ccle.drugs)
 
 # plot the distribution of the IC50 of the MEKi drugs
 par(mfrow=c(2,3), oma=c(1,1,5,1))
-plot(sort(SangerDrug[,MEK.sanger[1]]),main=paste(MEK.sanger[1]),ylab="IC50",pch=20)
-abline(h=quantile(SangerDrug[,MEK.sanger[1]],probs=.2,na.rm=TRUE),col="red")
-plot(sort(SangerDrug[,MEK.sanger[2]]),main=paste(MEK.sanger[2]),ylab="IC50",pch=20)
-abline(h=quantile(SangerDrug[,MEK.sanger[2]],probs=.2,na.rm=TRUE),col="red")
-plot(sort(SangerDrug[,MEK.sanger[3]]),main=paste(MEK.sanger[3]),ylab="IC50",pch=20)
-abline(h=quantile(SangerDrug[,MEK.sanger[3]],probs=.2,na.rm=TRUE),col="red")
-plot(sort(SangerDrug[,MEK.sanger[4]]),main=paste(MEK.sanger[4]),ylab="IC50",pch=20)
-abline(h=quantile(SangerDrug[,MEK.sanger[4]],probs=.2,na.rm=TRUE),col="red")
-plot(sort(ccle_drug[,MEK.ccle[1]]),main=paste(MEK.ccle[1]),ylab="IC50",pch=20)
-abline(h=quantile(ccle_drug[,MEK.ccle[1]],probs=.2,na.rm=TRUE),col="red")
-plot(sort(ccle_drug[,MEK.ccle[2]]),main=paste(MEK.ccle[2]),ylab="IC50",pch=20)
-abline(h=quantile(ccle_drug[,MEK.ccle[2]],probs=.2,na.rm=TRUE),col="red")
+x <- log(sort(SangerDrug[,MEK.sanger[1]]))
+plot(x,main=paste(MEK.sanger[1]),ylab="IC50",pch=20,col="gray60")
+abline(h=quantile(x,probs=.2,na.rm=TRUE),col="red")
+x <- log(sort(SangerDrug[,MEK.sanger[2]]))
+plot(x,main=paste(MEK.sanger[2]),ylab="IC50",pch=20,col="gray60")
+abline(h=quantile(x,probs=.2,na.rm=TRUE),col="red")
+x <- log(sort(SangerDrug[,MEK.sanger[3]]))
+plot(x,main=paste(MEK.sanger[3]),ylab="IC50",pch=20,col="gray60")
+abline(h=quantile(x,probs=.2,na.rm=TRUE),col="red")
+x <- log(sort(SangerDrug[,MEK.sanger[4]]))
+plot(x,main=paste(MEK.sanger[4]),ylab="IC50",pch=20,col="gray60")
+abline(h=quantile(x,probs=.2,na.rm=TRUE),col="red")
+x <- log(sort(ccle_drug[,MEK.ccle[1]]))
+plot(x,main=paste(MEK.ccle[1]),ylab="IC50",pch=20,col="gray60")
+abline(h=quantile(x,probs=.2,na.rm=TRUE),col="red")
+x <- log(sort(ccle_drug[,MEK.ccle[2]]))
+plot(x,main=paste(MEK.ccle[2]),ylab="IC50",pch=20,col="gray60")
+abline(h=quantile(x,probs=.2,na.rm=TRUE),col="red")
 title(main= "distribution of the IC50 across the MEK inhibitors in SANGER & CCLE db",outer=TRUE)
 
 # identify the cells that are evaluated for MEK inhibitors in sanger
@@ -258,12 +264,12 @@ KRAS_CCLE <- as.character(mutations.ccle["KRAS",])
 names(KRAS_CCLE) <- colnames(mutations.ccle)
 
 # set KRAS_CCLE and KRAS_SANGER to be a factor with same levels across ccle and sanger
-KRAS_CCLE[KRAS_CCLE %in% c("p.Q61H","p.Q61K","p.Q61L")] <- "p.Q61" 
-KRAS_SANGER[KRAS_SANGER %in% c("p.Q61H","p.Q61K","p.Q61L")] <- "p.Q61" 
-KRAS_CCLE[KRAS_CCLE %in% c("p.G13C","p.G13D")] <- "p.G13" 
-KRAS_SANGER[KRAS_SANGER %in% c("p.G13C","p.G13D")] <- "p.G13" 
-KRAS_SANGER[KRAS_SANGER %in% c("p.G12S","p.G12F","p.G12D","p.G12A")] <- "rare" 
-KRAS_CCLE[KRAS_CCLE %in% c("p.G12S","p.G12F","p.G12D","p.G12A")] <- "rare" 
+# KRAS_CCLE[KRAS_CCLE %in% c("p.Q61H","p.Q61K","p.Q61L")] <- "p.Q61" 
+# KRAS_SANGER[KRAS_SANGER %in% c("p.Q61H","p.Q61K","p.Q61L")] <- "p.Q61" 
+# KRAS_CCLE[KRAS_CCLE %in% c("p.G13C","p.G13D")] <- "p.G13" 
+# KRAS_SANGER[KRAS_SANGER %in% c("p.G13C","p.G13D")] <- "p.G13" 
+# KRAS_SANGER[KRAS_SANGER %in% c("p.G12S","p.G12F","p.G12D","p.G12A")] <- "rare" 
+# KRAS_CCLE[KRAS_CCLE %in% c("p.G12S","p.G12F","p.G12D","p.G12A")] <- "rare" 
 
 theseLevels  <- unique(c(KRAS_CCLE, KRAS_SANGER))
 table(KRAS_CCLE)
@@ -285,16 +291,24 @@ rownames(tmp) <- paste(rownames(mutations.ccle),"_mut",sep="")
 colnames(tmp) <- colnames(mutations.ccle)
 mutations.ccle <- tmp
 rm(tmp)
+rownames(mutations.sanger) <- paste(rownames(mutations.sanger),"_mut",sep="")
+################################
+# restrict to KRAS mutant samples only 
+################################
+
+table(kras.info.ccle["KRAS0",])
+table(kras.info.sanger["KRAS0",])
 
 ###################################################################################################################
 # GOLD standard: correlations between IC50 of CCLE and Sanger
 ###################################################################################################################
 tmp <- intersect(rownames(M3),rownames(M4))
-cor(M3[tmp,],M4[tmp,],method="spearman")
-scatterplotMatrix(normalizeCyclicLoess(cbind(M[tmp,],M2[tmp,])))
+cor(M3[tmp,-1],M4[tmp,],method="spearman")
+scatterplotMatrix(normalizeCyclicLoess(cbind(M[tmp,-1],M2[tmp,])))
 title(main="correlations in the IC50 of the MEK inhibitors 
 between CCLE & Sanger (Loess normalized)", outer=TRUE)
 
+par(mfrow=c(1,2))
 ###################################################################################################################
 # train our predictive model of MEK response in ccle
 # using a penalized regression approach  
@@ -304,12 +318,13 @@ between CCLE & Sanger (Loess normalized)", outer=TRUE)
 ###################################################################################################################
 
 
-par(mfrow=c(1,1))
+
 require(glmnet)
-ccle.top <- ifelse(apply(M4,1,sum)==2,1,0)
+#ccle.top <- M4[,2]
+ccle.top <- ifelse(apply(M4,1,sum)>1,1,0)
 names(ccle.top) <- rownames(M4)
 
-N <- 50
+N <- 30
 fit <- c()
 selected <- c()
 yhat <- c()
@@ -371,6 +386,7 @@ AUC <- performance(prediction.obj=Pred,"auc")
 AUC_AZD6244 <- c(AUC_AZD6244,as.numeric(AUC@y.values))
 }
 
+
 boxplot(cbind(AUC_RDEA119,AUC_CI.1040,AUC_PD.0325901,AUC_AZD6244),outline=FALSE,ylab="prediction of sensitivity (AUC)",ylim=c(0.3,.9))
 stripchart(list(RDEA119=AUC_RDEA119,CI.1040=AUC_CI.1040,PD.0325901=AUC_PD.0325901,AZD6244=AUC_AZD6244),add=TRUE,method="jitter",vertical=TRUE,col="royalblue",pch=20)
 title( main=" bootstrapped elasticnet models of gene expression + hybrid capture sequencing
@@ -381,6 +397,82 @@ validation in 35 cell lines processed by the Sanger group",outer=TRUE)
 rownames(selected) <- rownames(fit$beta)
 mus <- selected
 mus[mus!=0] <- 1
-plot(density(apply(mus,2,sum)))
-rownames(selected)[which(apply(mus,1,sum)>quantile(apply(mus,1,sum),probs=.95))]
-sort(apply(mus,1,sum),decreasing=TRUE)[1:20]
+#plot(density(apply(mus,2,sum)))
+rownames(selected)[which(apply(mus,1,sum)>quantile(apply(mus,1,sum),probs=.99))]
+sort(apply(mus,1,sum),decreasing=TRUE)[1:50]
+
+
+###################################################################################################################
+# train our predictive model of MEK response in sanger
+# using a penalized regression approach  
+# with alpha=.1 (more ridge) and determine lambda using nfolds= 5
+# the robustness of the model is increased by boostrapping (n=100)
+# validate each model in BATTLE
+###################################################################################################################
+
+
+require(glmnet)
+sanger.top <- ifelse(apply(M3[,-1],1,sum)>2,1,0)
+#ccle.top <- M3[,4]
+names(sanger.top) <- rownames(M3)
+
+N <- 30
+fit <- c()
+selected <- c()
+yhat <- c()
+models <- 0
+i <- 0
+bal <- c()
+
+while(models<N)
+{
+  j <- c(names(which(sanger.top==1)),sample(names(which(sanger.top==0)),replace=TRUE))
+  
+  cv.fit <- cv.glmnet(t(rbind(rbind(SANGER_EXP[,j],mutations.sanger[,j]),kras.info.sanger[,j])), y=sanger.top[j], nfolds=3, alpha=.1)
+  fit <- glmnet(x=t(rbind(rbind(SANGER_EXP[,j],mutations.sanger[,j]),kras.info.sanger[,j])),y=ccle.top[j],alpha=.1,lambda=cv.fit$lambda.1se,family="binomial")
+  if(length(which(abs(as.numeric(fit$beta))> 10^-5))>10)
+  {
+    i=i+1
+    print(i)
+    selected <- cbind(selected , as.numeric(fit$beta))
+    
+    
+    dev <- which(rownames(M4) %in% intersect(j,rownames(M4)))
+    val <- rownames(M4)[-dev]
+    yhat <- c(yhat,list(predict(fit, t(rbind(rbind(CCLE_EXP[,val],mutations.ccle[,val]),kras.info.ccle[,val])),type="response")))
+    models <- length(yhat)
+  } }
+
+# assess and plot the performance
+require(ROCR)
+
+AUC_PD.0325901 <- c()
+for (i in c(1:N)){
+  Pred <- prediction(as.numeric(yhat[[i]]),as.numeric(M4[rownames(yhat[[i]]),1]))
+  Perf <- performance(prediction.obj=Pred,"tpr","fpr")
+  AUC <- performance(prediction.obj=Pred,"auc")
+  AUC_PD.0325901 <- c(AUC_PD.0325901,as.numeric(AUC@y.values))
+}
+
+AUC_AZD6244 <- c()
+for (i in c(1:N)){
+  Pred <- prediction(as.numeric(yhat[[i]]),as.numeric(M4[rownames(yhat[[i]]),2]))
+  Perf <- performance(prediction.obj=Pred,"tpr","fpr")
+  AUC <- performance(prediction.obj=Pred,"auc")
+  AUC_AZD6244 <- c(AUC_AZD6244,as.numeric(AUC@y.values))
+}
+
+boxplot(cbind(AUC_PD.0325901,AUC_AZD6244),outline=FALSE,ylab="prediction of sensitivity (AUC)",ylim=c(0.3,.9))
+stripchart(list(PD.0325901=AUC_PD.0325901,AZD6244=AUC_AZD6244),add=TRUE,method="jitter",vertical=TRUE,col="royalblue",pch=20)
+title( main=" bootstrapped elasticnet models of gene expression + hybrid capture sequencing
+trained in 68 ccle treated by PD.0325901 or AZD6244
+       validation in 35 cell lines processed by the Sanger group",outer=TRUE)
+
+# extract the biological meaning
+rownames(selected) <- rownames(fit$beta)
+mus <- selected
+mus[mus!=0] <- 1
+#plot(density(apply(mus,2,sum)))
+rownames(selected)[which(apply(mus,1,sum)>quantile(apply(mus,1,sum),probs=.99))]
+sort(apply(mus,1,sum),decreasing=TRUE)[1:50]
+
