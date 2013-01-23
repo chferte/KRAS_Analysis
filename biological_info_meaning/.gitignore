@@ -25,4 +25,5 @@ G12Voverlap.rnk
 *.RData
 *.pdf
 *.gct
-
+.DS_Store
+GSEA_mutations_files
