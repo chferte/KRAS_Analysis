@@ -150,6 +150,9 @@ M <- SangerDrug[MEK.cells.sanger,MEK.sanger]
 MEK.cells.ccle <- rownames(ccle_drug)[-unique(c(which(is.na(ccle_drug[,MEK.ccle[1]])), which(is.na(ccle_drug[,MEK.ccle[2]]))))]
 M2 <- ccle_drug[MEK.cells.ccle,MEK.ccle]
 
+rownames(M)
+rownames(M2)
+
 require(car)
 scatterplotMatrix(M,main="correlations in the IC50 of the MEK inhibitors in Sanger")
 scatterplotMatrix(normalizeCyclicLoess(M),main="correlations in the IC50 of the MEK inhibitors in Sanger (Loess normalized)")
@@ -192,7 +195,9 @@ title(main="univariate difefrential expression for sensitivity to MEKi across SA
 # # load the  mutations data
 # ################################################################################################################
 
+# ################################################################################################################
 # first load the ccle data
+# ################################################################################################################
 MAF1 <- read.delim("/home/cferte/CCLE_hybrid_capture1650_hg19_NoCommonSNPs_NoNeutralVariants_CDS_2012.05.07.maf",header=TRUE)
 MAF1 <- MAF1[which(MAF1$Hugo_Symbol!="Unknown"),]
 MAF1 <- MAF1[,c("Hugo_Symbol","Tumor_Sample_Barcode","Protein_Change", "Genome_Change")]
@@ -211,34 +216,30 @@ for(i in rownames(MATMUT)){
 }
 mutations.ccle <- MATMUT
 rm(MAF1,MATMUT)
-mutations.ccle <- mutations.ccle[,rownames(M4)]
 
+# make the names of the samples coherents for ccle
+tmp <- intersect(rownames(M4),colnames(mutations.ccle))
+mutations.ccle <- mutations.ccle[,tmp]
+M2 <- M2[tmp,]
+M4 <- M4[tmp,]
 
 # second, load the mutation data from Sanger
 mutations.sanger <- read.csv("/home/cferte/FELLOW/cferte/Sanger_gdsc_mutation_w3.csv",header=TRUE)
 rownames(mutations.sanger) <- toupper(gsub(pattern="-",replacement="",mutations.sanger$Cell.Line))
 mutations.sanger <- t(mutations.sanger[ grep(pattern="NSCLC",x=mutations.sanger$Tissue),])
-
 mutations.sanger[grep(pattern="na",x=mutations.sanger)] <- NA
 mutations.sanger[grep(pattern="wt",x=mutations.sanger)] <- "0"
-#KRAS_SANGER <- mutations.sanger["KRAS",]
-#KRAS_SANGER[KRAS_SANGER!=0] <- sapply(strsplit(KRAS_SANGER[KRAS_SANGER!=0],split="::"),function(x){x[[1]]})
-#mutations.sanger[grep(pattern="p.",x=mutations.sanger)] <- "1"
 
-# make the names of the genes coherents
+# make the names of the genes coherents between sanger and ccle
 tmp <- intersect(rownames(mutations.sanger),rownames(mutations.ccle))
 mutations.ccle <- mutations.ccle[tmp,]
 mutations.sanger <- mutations.sanger[tmp,]
-
-# make the names of the samples coherents for ccle
-tmp <- intersect(rownames(M4),colnames(mutations.ccle))
-mutations.ccle <- mutations.ccle[,tmp]
-M4 <- M4[tmp,]
 
 # make the names of the samples coherents for sanger
 tmp <- intersect(rownames(M3),colnames(mutations.sanger))
 mutations.sanger <- mutations.sanger[,tmp]
 M3 <- M3[tmp,]
+M <- M[tmp,]
 
 
 # get rid of the NA's in Sanger mutations matrix
@@ -248,8 +249,8 @@ mutations.sanger[grep(pattern="p.",x=mutations.sanger)] <- "1"
 
 # transform mutations.sanger into numeric and get rid of NAs
 tmp <- apply(mutations.sanger,2,as.numeric)
-tmp <- tmp[which(!is.na(tmp[,1])),]
-rownames(tmp) <- rownames(mutations.sanger)[which(!is.na(tmp[,1]))]
+rownames(tmp) <- rownames(mutations.sanger)
+tmp <- tmp[names(which(!is.na(tmp[,1]))),]
 mutations.sanger <- tmp
 rm(tmp)
 
@@ -262,6 +263,8 @@ rm(tmp)
 # create the KRAS_CCLE
 KRAS_CCLE <- as.character(mutations.ccle["KRAS",])
 names(KRAS_CCLE) <- colnames(mutations.ccle)
+table(KRAS_CCLE)
+table(KRAS_SANGER)
 
 # set KRAS_CCLE and KRAS_SANGER to be a factor with same levels across ccle and sanger
 # KRAS_CCLE[KRAS_CCLE %in% c("p.Q61H","p.Q61K","p.Q61L")] <- "p.Q61" 
@@ -292,12 +295,70 @@ colnames(tmp) <- colnames(mutations.ccle)
 mutations.ccle <- tmp
 rm(tmp)
 rownames(mutations.sanger) <- paste(rownames(mutations.sanger),"_mut",sep="")
+
+###################################################################################################################
+# imput the cnv data
+###################################################################################################################
+cnv.ccle <- read.delim("/home/cferte/CCLE_copynumber_byGene_2012-09-29.txt",header=TRUE)
+CNV1 <- cnv.ccle
+cnv.ccle <- cnv.ccle[,grep(pattern="LUNG",colnames(cnv.ccle))]
+rownames(cnv.ccle) <- CNV1$geneName
+colnames(cnv.ccle) <- sub(pattern="_LUNG",replacement="",x=colnames(cnv.ccle))
+cnv.ccle <- cnv.ccle[,rownames(M4)]
+
+cnv.sanger <- read.delim("/external-data/DAT_032__Sanger_Cell_Lines/CNV/Sanger800_copy_number_by_gene.txt",header=TRUE,na.strings = c("NA"," ","NaN"))
+cnv.sanger <- loadEntity('syn464292')
+
+cnv.sanger <- cnv.sanger$objects$eset
+sampleNames(cnv.sanger)
+featureNames(cnv.sanger)
+rownames(cnv.sanger) <- cnv.sanger$Gene.Symb
+tmp <- sapply(strsplit(x=colnames(cnv.sanger),split="_"),function(x){x[[1]]})
+tmp <- toupper(x=tmp)
+tmp <- gsub(pattern=".",replacement="",x=tmp,fixed = TRUE)
+colnames(cnv.sanger) <- tmp
+tmp <- intersect(rownames(M3),colnames(cnv.sanger))
+cnv.sanger <- cnv.sanger[,tmp]
+M3 <- M3[tmp,]
+
+# get rid of the Nas in cnv.sanger
+# pblm here
+x <- 1
+tmp <- apply(cnv.sanger,2,function(x){rownames(cnv.sanger)[which(is.na(x))]})
+tmp <- unique(unlist(tmp))
+cnv.sanger <- cnv.sanger[tmp,]
+table(is.na(cnv.sanger))
+
+# rescale the cnv data so the ccle and sanger cnv are comparable
+#####################################################################################
+
+# rescale the data (chemores) to have the same mean and variance than the LUAD
+# Justin's function to rescale the VS to get the same mean/var than the TS
+normalize_to_X <- function(mean.x, sd.x, Y){
+  m.y <- rowMeans(Y)
+  sd.y <- apply(Y, 1, sd)
+  Y.adj <- (Y - m.y) * sd.x / sd.y  + mean.x 
+  Y.adj[sd.y == 0] <- mean.x[sd.y==0]
+  Y.adj
+}
+
+
+cnv.sanger <- normalize_to_X(rowMeans(cnv.ccle),apply(cnv.ccle,1,sd),cnv.sanger)
+
+
+tmp <- intersect(rownames(cnv.sanger),rownames(cnv.ccle))
+
+
+
+
 ################################
 # restrict to KRAS mutant samples only 
 ################################
 
-table(kras.info.ccle["KRAS0",])
-table(kras.info.sanger["KRAS0",])
+KC <- colnames(kras.info.ccle)
+KS <- colnames(kras.info.sanger)
+#KC <- names(which(kras.info.ccle["KRAS0",]==1))
+#KS <- names(which(kras.info.sanger["KRAS0",]==1))
 
 ###################################################################################################################
 # GOLD standard: correlations between IC50 of CCLE and Sanger
@@ -321,33 +382,35 @@ par(mfrow=c(1,2))
 
 require(glmnet)
 #ccle.top <- M4[,2]
-ccle.top <- ifelse(apply(M4,1,sum)>1,1,0)
-names(ccle.top) <- rownames(M4)
+ccle.top <- ifelse(apply(M4[KC,],1,sum)>0,1,0)
+table(ccle.top)
+names(ccle.top) <- rownames(M4[KC,])
 
-N <- 30
+N <- 20
 fit <- c()
 selected <- c()
 yhat <- c()
 models <- 0
 i <- 0
 bal <- c()
-
+trainex <- c()
+validex <- c()
 while(models<N)
 {
 j <- c(names(which(ccle.top==1)),sample(names(which(ccle.top==0)),replace=TRUE))
-
-cv.fit <- cv.glmnet(t(rbind(rbind(CCLE_EXP[,j],mutations.ccle[,j]),kras.info.ccle[,j])), y=ccle.top[j], nfolds=3, alpha=.1)
-fit <- glmnet(x=t(rbind(rbind(CCLE_EXP[,j],mutations.ccle[,j]),kras.info.ccle[,j])),y=ccle.top[j],alpha=.1,lambda=cv.fit$lambda.1se,family="binomial")
+trainex <- rbind(rbind(CCLE_EXP[,j],mutations.ccle[,j]),kras.info.ccle[,j])
+cv.fit <- cv.glmnet(t(trainex), y=ccle.top[j], nfolds=3, alpha=.1)
+fit <- glmnet(x=t(trainex),y=ccle.top[j],alpha=.1,lambda=cv.fit$lambda.1se,family="binomial")
 if(length(which(abs(as.numeric(fit$beta))> 10^-5))>10)
 {
 i=i+1
 print(i)
 selected <- cbind(selected , as.numeric(fit$beta))
 
-
-dev <- which(rownames(M3) %in% intersect(j,rownames(M3)))
-val <- rownames(M3)[-dev]
-yhat <- c(yhat,list(predict(fit, t(rbind(rbind(SANGER_EXP[,val],mutations.sanger[,val]),kras.info.sanger[,val])),type="response")))
+dev <- which(rownames(M3[KS,]) %in% intersect(j,rownames(M3[KS,])))
+val <- rownames(M3[KS,])[-dev]
+validex <- rbind(rbind(SANGER_EXP[,val],mutations.sanger[,val]),kras.info.sanger[,val])
+yhat <- c(yhat,list(predict(fit, t(validex),type="response")))
 models <- length(yhat)
 } }
 
@@ -399,7 +462,9 @@ mus <- selected
 mus[mus!=0] <- 1
 #plot(density(apply(mus,2,sum)))
 rownames(selected)[which(apply(mus,1,sum)>quantile(apply(mus,1,sum),probs=.99))]
-sort(apply(mus,1,sum),decreasing=TRUE)[1:50]
+sort(apply(mus,1,sum),decreasing=TRUE)[1:100]
+
+
 
 
 ###################################################################################################################
@@ -412,9 +477,9 @@ sort(apply(mus,1,sum),decreasing=TRUE)[1:50]
 
 
 require(glmnet)
-sanger.top <- ifelse(apply(M3[,-1],1,sum)>2,1,0)
+sanger.top <- ifelse(apply(M3[KS,-1],1,sum)>2,1,0)
 #ccle.top <- M3[,4]
-names(sanger.top) <- rownames(M3)
+names(sanger.top) <- rownames(M3[KS,])
 
 N <- 30
 fit <- c()
@@ -429,7 +494,7 @@ while(models<N)
   j <- c(names(which(sanger.top==1)),sample(names(which(sanger.top==0)),replace=TRUE))
   
   cv.fit <- cv.glmnet(t(rbind(rbind(SANGER_EXP[,j],mutations.sanger[,j]),kras.info.sanger[,j])), y=sanger.top[j], nfolds=3, alpha=.1)
-  fit <- glmnet(x=t(rbind(rbind(SANGER_EXP[,j],mutations.sanger[,j]),kras.info.sanger[,j])),y=ccle.top[j],alpha=.1,lambda=cv.fit$lambda.1se,family="binomial")
+  fit <- glmnet(x=t(rbind(rbind(SANGER_EXP[,j],mutations.sanger[,j]),kras.info.sanger[,j])),y=sanger.top[j],alpha=.1,lambda=cv.fit$lambda.1se,family="binomial")
   if(length(which(abs(as.numeric(fit$beta))> 10^-5))>10)
   {
     i=i+1
@@ -437,8 +502,8 @@ while(models<N)
     selected <- cbind(selected , as.numeric(fit$beta))
     
     
-    dev <- which(rownames(M4) %in% intersect(j,rownames(M4)))
-    val <- rownames(M4)[-dev]
+    dev <- which(rownames(M4[KC,]) %in% intersect(j,rownames(M4[KC,])))
+    val <- rownames(M4[KC,])[-dev]
     yhat <- c(yhat,list(predict(fit, t(rbind(rbind(CCLE_EXP[,val],mutations.ccle[,val]),kras.info.ccle[,val])),type="response")))
     models <- length(yhat)
   } }
