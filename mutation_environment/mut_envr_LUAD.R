@@ -257,26 +257,64 @@ k <- names(which(apply(new.matmut[,j],1,sum)>1 & apply(new.matmut[,j],1,sum)<len
 G12V.overlap.genes <- apply(new.matmut[k,j],1,function(x){fisher.test(as.numeric(G12V),as.numeric(x),alternative="greater")$p.value})
 G12V.exclusive.genes <- apply(new.matmut[k,j],1,function(x){ fisher.test(as.numeric(G12V),as.numeric(x),alternative="less")$p.value})
 
-#j <- which(KRAS_LUAD %in% c("G12V"))
 G12C <- ifelse(KRAS_LUAD=="G12C",1,0)
 k <- names(which(apply(new.matmut,1,sum)>1 & apply(new.matmut,1,sum)<401))
 G12C.REST.overlap.genes <- apply(new.matmut[k,],1,function(x){fisher.test(as.numeric(G12C),as.numeric(x),alternative="greater")$p.value})
 G12C.REST.exclusive.genes <- apply(new.matmut[k,],1,function(x){ fisher.test(as.numeric(G12C),as.numeric(x),alternative="less")$p.value})
 
+G12V <- ifelse(KRAS_LUAD=="G12V",1,0)
+k <- names(which(apply(new.matmut,1,sum)>1 & apply(new.matmut,1,sum)<401))
+G12V.REST.overlap.genes <- apply(new.matmut[k,],1,function(x){fisher.test(as.numeric(G12V),as.numeric(x),alternative="greater")$p.value})
+G12V.REST.exclusive.genes <- apply(new.matmut[k,],1,function(x){ fisher.test(as.numeric(G12V),as.numeric(x),alternative="less")$p.value})
 
+j <- which(KRAS_LUAD %in% c("G12C","G12V"))
+G12C.G12V <- ifelse(KRAS_LUAD[j]=="G12C",1,0)
+k <- names(which(apply(new.matmut[,j],1,sum)>1 & apply(new.matmut[,j],1,sum)<length(j)))
+G12C.G12V.overlap.genes <- apply(new.matmut[k,j],1,function(x){fisher.test(as.numeric(G12C.G12V),as.numeric(x),alternative="greater")$p.value})
+G12C.G12V.exclusive.genes <- apply(new.matmut[k,j],1,function(x){ fisher.test(as.numeric(G12C.G12V),as.numeric(x),alternative="less")$p.value})
 
+# save these into .rnk files for input into the GSEA java preranked test
+setwd("/gluster/home/cferte/FELLOW/cferte/KRAS_Analysis/biological_info_meaning/GSEA_mutations_files/")
 
+#G12C and G12V vs WT
 foo <- as.data.frame(cbind(names(G12C.overlap.genes),as.numeric(-log10(as.numeric(G12C.overlap.genes)))))
 foo <- foo[-which(foo$V1=="KRAS"),]
 write.table(foo,file="G12Cgenesoverlap.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
+
 foo <- as.data.frame(cbind(names(G12C.exclusive.genes),as.numeric(-log10(as.numeric(G12C.exclusive.genes)))))
 foo <- foo[-which(foo$V1=="KRAS"),]
 write.table(foo,file="G12Cgenesexclusive.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
+
 foo <- as.data.frame(cbind(names(G12V.overlap.genes),as.numeric(-log10(as.numeric(G12V.overlap.genes)))))
 foo <- foo[-which(foo$V1=="KRAS"),]
 write.table(foo,file="G12Vgenesoverlap.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
+
 foo <- as.data.frame(cbind(names(G12V.exclusive.genes),as.numeric(-log10(as.numeric(G12V.exclusive.genes)))))
 foo <- foo[-which(foo$V1=="KRAS"),]
 write.table(foo,file="G12Vgenesexclusive.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
 
+foo <- as.data.frame(cbind(names(G12C.G12V.overlap.genes),as.numeric(-log10(as.numeric(G12C.G12V.overlap.genes)))))
+foo <- foo[-which(foo$V1=="KRAS"),]
+write.table(foo,file="G12CG12Vgenesoverlap.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
+
+foo <- as.data.frame(cbind(names(G12C.G12V.exclusive.genes),as.numeric(-log10(as.numeric(G12C.G12V.exclusive.genes)))))
+foo <- foo[-which(foo$V1=="KRAS"),]
+write.table(foo,file="G12CG12Vgenesexclusive.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
+
+# G12C and G12V vs rest
+foo <- as.data.frame(cbind(names(G12C.REST.overlap.genes),as.numeric(-log10(as.numeric(G12C.REST.overlap.genes)))))
+foo <- foo[-which(foo$V1=="KRAS"),]
+write.table(foo,file="G12CRESTgenesoverlap.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
+
+foo <- as.data.frame(cbind(names(G12C.REST.exclusive.genes),as.numeric(-log10(as.numeric(G12C.REST.exclusive.genes)))))
+foo <- foo[-which(foo$V1=="KRAS"),]
+write.table(foo,file="G12Cgenesexclusive.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
+
+foo <- as.data.frame(cbind(names(G12V.REST.overlap.genes),as.numeric(-log10(as.numeric(G12V.REST.overlap.genes)))))
+foo <- foo[-which(foo$V1=="KRAS"),]
+write.table(foo,file="G12Vgenesoverlap.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
+
+foo <- as.data.frame(cbind(names(G12V.REST.exclusive.genes),as.numeric(-log10(as.numeric(G12V.REST.exclusive.genes)))))
+foo <- foo[-which(foo$V1=="KRAS"),]
+write.table(foo,file="G12Vgenesexclusive.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
 
