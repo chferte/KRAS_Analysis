@@ -18,6 +18,7 @@ options(stringsAsFactors=FALSE)
 #######################################################################################################
 
 source("/home/cferte/FELLOW/cferte/KRAS_Analysis/data_input/TCGA_LUAD_input.R")
+
 load("/home/cferte/FELLOW/cferte/KRAS_Analysis/MUT_TYPE_LUAD.RData")
 load("/home/cferte/FELLOW/cferte/KRAS_Analysis/mutations_LUAD.RData")
 
@@ -82,158 +83,167 @@ rm(tmp,tmp1)
 # rm(x)
 
 
-###############################################################################################################################
-# 3. compute the mutations that are associated with KRAS and then plot the PCA plot according to the specific KRAS mutations
-###############################################################################################################################
-kras <- apply(MATMUT_LUAD[grep("KRAS",rownames(MATMUT_LUAD)),],2,sum)
-kras <- ifelse(kras==0,0,1)
-kras.overlap <- apply(MATMUT_LUAD,1,function(x){ fisher.test(as.numeric(kras),as.numeric(x),alternative="greater")$p.value})
-kras.exclusive <- apply(MATMUT_LUAD,1,function(x){ fisher.test(as.numeric(kras),as.numeric(x),alternative="less")$p.value})
-
-table(kras.overlap)
-
-hist(kras.overlap, breaks=30)
-hist(kras.exclusive, breaks=30)
-
-table(kras.overlap<.01)
-which(kras.overlap<.05)
-table(kras.exclusive<.01)
-which(kras.exclusive<.05)
+# ###############################################################################################################################
+# # 3. compute the mutations that are associated (overlapping or exclusive) with KRAS mutations
+# ###############################################################################################################################
+# kras <- apply(MATMUT_LUAD[grep("KRAS",rownames(MATMUT_LUAD)),],2,sum)
+# kras <- ifelse(kras==0,0,1)
+# kras.overlap <- apply(MATMUT_LUAD,1,function(x){ fisher.test(as.numeric(kras),as.numeric(x),alternative="greater")$p.value})
+# kras.exclusive <- apply(MATMUT_LUAD,1,function(x){ fisher.test(as.numeric(kras),as.numeric(x),alternative="less")$p.value})
+# 
+# table(kras.overlap)
+# 
+# hist(kras.overlap, breaks=30)
+# hist(kras.exclusive, breaks=30)
+# 
+# table(kras.overlap<.01)
+# which(kras.overlap<.05)
+# table(kras.exclusive<.01)
+# which(kras.exclusive<.05)
 
 ################################################################################################################################
 # 4. create a new matrix per gene instead of per specific mutation
 ###############################################################################################################################
 
-gene <- unique(sapply(strsplit(x=rownames(MATMUT_LUAD),split="_"), function(x){x[[1]]}))
-j <- c()
-new.matmut <- matrix(0,nrow=length(gene),ncol=length(colnames(MATMUT_LUAD)))
-rownames(new.matmut) <- gene
-colnames(new.matmut) <- colnames(MATMUT_LUAD)
-
-for(i in rownames(new.matmut)){
-new.matmut[i,c(names(which(apply(MATMUT_LUAD[grep(pattern=i,x=rownames(MATMUT_LUAD)),],2,sum)!=0)))] <- 1
-}
-
-###############################################################################################################################
-# 5. compute the overlap between KRAS specific mutations and specific mutations
-###############################################################################################################################
-j <- which(KRAS_LUAD %in% c("WT","G12C"))
-G12C<- ifelse(KRAS_LUAD[j]=="G12C",1,0)
-k <- which(apply(MATMUT_LUAD[,j],1,sum)>0)
-G12C.overlap <- apply(MATMUT_LUAD[k,j],1,function(x){fisher.test(as.numeric(G12C),as.numeric(x),alternative="greater")$p.value})
-G12C.exclusive <- apply(MATMUT_LUAD[k,j],1,function(x){ fisher.test(as.numeric(G12C),as.numeric(x),alternative="less")$p.value})
+# gene <- unique(sapply(strsplit(x=rownames(MATMUT_LUAD),split="_"), function(x){x[[1]]}))
+# j <- c()
+# new.matmut <- matrix(0,nrow=length(gene),ncol=length(colnames(MATMUT_LUAD)))
+# rownames(new.matmut) <- gene
+# colnames(new.matmut) <- colnames(MATMUT_LUAD)
+# 
+# for(i in rownames(new.matmut)){
+# new.matmut[i,c(names(which(apply(MATMUT_LUAD[grep(pattern=i,x=rownames(MATMUT_LUAD)),],2,sum)!=0)))] <- 1
+# }
+# 
+# MATMUT_GENE_LUAD <- new.matmut
+# save(file="/home/cferte/FELLOW/cferte/KRAS_Analysis/MATMUT_GENE_LUAD.RData",MATMUT_GENE_LUAD)
 
 
-j <- which(KRAS_LUAD %in% c("WT","G12V"))
-G12V <- ifelse(KRAS_LUAD[j]=="G12V",1,0)
-k <- which(apply(MATMUT_LUAD[,j],1,sum)>0)
-G12V.overlap <- apply(MATMUT_LUAD[k,j],1,function(x){ fisher.test(as.numeric(G12V),as.numeric(x),alternative="greater")$p.value})
-G12V.exclusive <- apply(MATMUT_LUAD[k,j],1,function(x){ fisher.test(as.numeric(G12V),as.numeric(x),alternative="less")$p.value})
-
-
-# display the results
-
-hist(G12C.overlap, breaks=30)
-hist(G12C.exclusive, breaks=30)
-table(G12C.overlap<.05)
-table(G12C.exclusive<.05)
-paste(names(which(G12C.overlap<.05)),collapse=" ")
-paste(names(which(G12C.exclusive<.05)),collapse=" ")
-table(G12V.overlap<.05)
-table(G12V.exclusive<.05)
-hist(G12V.overlap, breaks=30)
-hist(G12V.exclusive, breaks=30)
-paste(names(which(G12V.overlap<.05)),collapse=" ")
-paste(names(which(G12V.exclusive<.05)),collapse=" ")
-
-# create G12Coverlap.rnk object to be analyzed in the GSEA java (pre ranked test)
-tmp <- G12C.overlap
-tmp <- tmp[-c(grep(pattern="KRAS",x=names(tmp)))]
-rnames <- sapply(strsplit(names(tmp),split="_"),function(x){x[[1]]})
-j <- c()
-vec <- as.numeric(rep(1,times=length(unique(rnames))))
-names(vec) <- unique(rnames)
-for(i in names(vec))
-{ 
-  j <- which(rnames==i)
-  vec[i] <- min(tmp[j])
-}
-table(vec)
-plot(sort(vec))
-plot(sort(-log10(vec)))
-foo <- as.data.frame(cbind(names(vec),as.numeric(-log10(as.numeric(vec)))))
-write.table(foo,file="G12Coverlap.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
-
-
-
-# create G12Voverlap.rnk object to be analyzed in the GSEA java (pre ranked test)
-tmp <- G12V.overlap
-tmp <- tmp[-c(grep(pattern="KRAS",x=names(tmp)))]
-rnames <- sapply(strsplit(names(tmp),split="_"),function(x){x[[1]]})
-j <- c()
-vec <- as.numeric(rep(1,times=length(unique(rnames))))
-names(vec) <- unique(rnames)
-for(i in names(vec))
-{ 
-  j <- which(rnames==i)
-  vec[i] <- min(tmp[j])
-}
-table(vec)
-plot(sort(vec))
-plot(sort(-log10(vec)))
-foo <- as.data.frame(cbind(names(vec),as.numeric(-log10(as.numeric(vec)))))
-write.table(foo,file="G12Voverlap.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
-
-
-###############################################################################################################################
-# 7. compute the overlap between KRAS G12C and G12V mutations
-###############################################################################################################################
-j <- which(KRAS_LUAD %in% c("G12V","G12C"))
-G12C<- ifelse(KRAS_LUAD[j]=="G12C",1,0)
-k <- which(apply(MATMUT_LUAD[,j],1,sum)>0)
-G12C.G12V.overlap <- apply(MATMUT_LUAD[k,j],1,function(x){fisher.test(as.numeric(G12C),as.numeric(x),alternative="greater")$p.value})
-G12C.G12V.exclusive <- apply(MATMUT_LUAD[k,j],1,function(x){ fisher.test(as.numeric(G12C),as.numeric(x),alternative="less")$p.value})
-
-# create G12C.G12V.overlap.rnk object to be analyzed in the GSEA java (pre ranked test)
-tmp <- G12C.G12V.overlap
-tmp <- tmp[-c(grep(pattern="KRAS",x=names(tmp)))]
-rnames <- sapply(strsplit(names(tmp),split="_"),function(x){x[[1]]})
-j <- c()
-vec <- as.numeric(rep(1,times=length(unique(rnames))))
-names(vec) <- unique(rnames)
-for(i in names(vec))
-{ 
-  j <- which(rnames==i)
-  vec[i] <- min(tmp[j])
-}
-table(vec)
-plot(sort(vec))
-plot(sort(-log10(vec)))
-foo <- as.data.frame(cbind(names(vec),as.numeric(-log10(as.numeric(vec)))))
-write.table(foo,file="G12C.G12V.genes.overlap.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
-
-# create G12C.G12V.exclusive.rnk object to be analyzed in the GSEA java (pre ranked test)
-tmp <- G12C.G12V.exclusive
-tmp <- tmp[-c(grep(pattern="KRAS",x=names(tmp)))]
-rnames <- sapply(strsplit(names(tmp),split="_"),function(x){x[[1]]})
-j <- c()
-vec <- as.numeric(rep(1,times=length(unique(rnames))))
-names(vec) <- unique(rnames)
-for(i in names(vec))
-{ 
-  j <- which(rnames==i)
-  vec[i] <- min(tmp[j])
-}
-table(vec)
-plot(sort(vec))
-plot(sort(-log10(vec)))
-foo <- as.data.frame(cbind(names(vec),as.numeric(-log10(as.numeric(vec)))))
-write.table(foo,file="G12C.G12V.genes.exclusive.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
+# ###############################################################################################################################
+# # 5. compute the overlap between KRAS specific mutations and specific mutations
+# ###############################################################################################################################
+# j <- which(KRAS_LUAD %in% c("WT","G12C"))
+# G12C<- ifelse(KRAS_LUAD[j]=="G12C",1,0)
+# k <- which(apply(MATMUT_LUAD[,j],1,sum)>0)
+# G12C.overlap <- apply(MATMUT_LUAD[k,j],1,function(x){fisher.test(as.numeric(G12C),as.numeric(x),alternative="greater")$p.value})
+# G12C.exclusive <- apply(MATMUT_LUAD[k,j],1,function(x){ fisher.test(as.numeric(G12C),as.numeric(x),alternative="less")$p.value})
+# 
+# 
+# j <- which(KRAS_LUAD %in% c("WT","G12V"))
+# G12V <- ifelse(KRAS_LUAD[j]=="G12V",1,0)
+# k <- which(apply(MATMUT_LUAD[,j],1,sum)>0)
+# G12V.overlap <- apply(MATMUT_LUAD[k,j],1,function(x){ fisher.test(as.numeric(G12V),as.numeric(x),alternative="greater")$p.value})
+# G12V.exclusive <- apply(MATMUT_LUAD[k,j],1,function(x){ fisher.test(as.numeric(G12V),as.numeric(x),alternative="less")$p.value})
+# 
+# 
+# # display the results
+# 
+# hist(G12C.overlap, breaks=30)
+# hist(G12C.exclusive, breaks=30)
+# table(G12C.overlap<.05)
+# table(G12C.exclusive<.05)
+# paste(names(which(G12C.overlap<.05)),collapse=" ")
+# paste(names(which(G12C.exclusive<.05)),collapse=" ")
+# table(G12V.overlap<.05)
+# table(G12V.exclusive<.05)
+# hist(G12V.overlap, breaks=30)
+# hist(G12V.exclusive, breaks=30)
+# paste(names(which(G12V.overlap<.05)),collapse=" ")
+# paste(names(which(G12V.exclusive<.05)),collapse=" ")
+# 
+# # create G12Coverlap.rnk object to be analyzed in the GSEA java (pre ranked test)
+# tmp <- G12C.overlap
+# tmp <- tmp[-c(grep(pattern="KRAS",x=names(tmp)))]
+# rnames <- sapply(strsplit(names(tmp),split="_"),function(x){x[[1]]})
+# j <- c()
+# vec <- as.numeric(rep(1,times=length(unique(rnames))))
+# names(vec) <- unique(rnames)
+# for(i in names(vec))
+# { 
+#   j <- which(rnames==i)
+#   vec[i] <- min(tmp[j])
+# }
+# table(vec)
+# plot(sort(vec))
+# plot(sort(-log10(vec)))
+# foo <- as.data.frame(cbind(names(vec),as.numeric(-log10(as.numeric(vec)))))
+# write.table(foo,file="G12Coverlap.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
+# 
+# 
+# 
+# # create G12Voverlap.rnk object to be analyzed in the GSEA java (pre ranked test)
+# tmp <- G12V.overlap
+# tmp <- tmp[-c(grep(pattern="KRAS",x=names(tmp)))]
+# rnames <- sapply(strsplit(names(tmp),split="_"),function(x){x[[1]]})
+# j <- c()
+# vec <- as.numeric(rep(1,times=length(unique(rnames))))
+# names(vec) <- unique(rnames)
+# for(i in names(vec))
+# { 
+#   j <- which(rnames==i)
+#   vec[i] <- min(tmp[j])
+# }
+# table(vec)
+# plot(sort(vec))
+# plot(sort(-log10(vec)))
+# foo <- as.data.frame(cbind(names(vec),as.numeric(-log10(as.numeric(vec)))))
+# write.table(foo,file="G12Voverlap.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
+# 
+# 
+# ###############################################################################################################################
+# # 7. compute the overlap between KRAS G12C and G12V mutations
+# ###############################################################################################################################
+# j <- which(KRAS_LUAD %in% c("G12V","G12C"))
+# G12C<- ifelse(KRAS_LUAD[j]=="G12C",1,0)
+# k <- which(apply(MATMUT_LUAD[,j],1,sum)>0)
+# G12C.G12V.overlap <- apply(MATMUT_LUAD[k,j],1,function(x){fisher.test(as.numeric(G12C),as.numeric(x),alternative="greater")$p.value})
+# G12C.G12V.exclusive <- apply(MATMUT_LUAD[k,j],1,function(x){ fisher.test(as.numeric(G12C),as.numeric(x),alternative="less")$p.value})
+# 
+# # create G12C.G12V.overlap.rnk object to be analyzed in the GSEA java (pre ranked test)
+# tmp <- G12C.G12V.overlap
+# tmp <- tmp[-c(grep(pattern="KRAS",x=names(tmp)))]
+# rnames <- sapply(strsplit(names(tmp),split="_"),function(x){x[[1]]})
+# j <- c()
+# vec <- as.numeric(rep(1,times=length(unique(rnames))))
+# names(vec) <- unique(rnames)
+# for(i in names(vec))
+# { 
+#   j <- which(rnames==i)
+#   vec[i] <- min(tmp[j])
+# }
+# table(vec)
+# plot(sort(vec))
+# plot(sort(-log10(vec)))
+# foo <- as.data.frame(cbind(names(vec),as.numeric(-log10(as.numeric(vec)))))
+# write.table(foo,file="G12C.G12V.genes.overlap.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
+# 
+# # create G12C.G12V.exclusive.rnk object to be analyzed in the GSEA java (pre ranked test)
+# tmp <- G12C.G12V.exclusive
+# tmp <- tmp[-c(grep(pattern="KRAS",x=names(tmp)))]
+# rnames <- sapply(strsplit(names(tmp),split="_"),function(x){x[[1]]})
+# j <- c()
+# vec <- as.numeric(rep(1,times=length(unique(rnames))))
+# names(vec) <- unique(rnames)
+# for(i in names(vec))
+# { 
+#   j <- which(rnames==i)
+#   vec[i] <- min(tmp[j])
+# }
+# table(vec)
+# plot(sort(vec))
+# plot(sort(-log10(vec)))
+# foo <- as.data.frame(cbind(names(vec),as.numeric(-log10(as.numeric(vec)))))
+# write.table(foo,file="G12C.G12V.genes.exclusive.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
 
 
 ###############################################################################################################################
 # 8. compute the overlap between KRAS G12C and G12V mutations AND genes
 ###############################################################################################################################
+
+# load the MATMUT_GENE_LUAD (mutation matrix per gene)
+load(file="/home/cferte/FELLOW/cferte/KRAS_Analysis/MATMUT_GENE_LUAD.RData")
+new.matmut <- MATMUT_GENE_LUAD
+
 j <- which(KRAS_LUAD %in% c("WT","G12C"))
 G12C<- ifelse(KRAS_LUAD[j]=="G12C",1,0)
 k <- names(which(apply(new.matmut[,j],1,sum)>1 & apply(new.matmut[,j],1,sum)<length(j)))
@@ -246,6 +256,15 @@ G12V <- ifelse(KRAS_LUAD[j]=="G12V",1,0)
 k <- names(which(apply(new.matmut[,j],1,sum)>1 & apply(new.matmut[,j],1,sum)<length(j)))
 G12V.overlap.genes <- apply(new.matmut[k,j],1,function(x){fisher.test(as.numeric(G12V),as.numeric(x),alternative="greater")$p.value})
 G12V.exclusive.genes <- apply(new.matmut[k,j],1,function(x){ fisher.test(as.numeric(G12V),as.numeric(x),alternative="less")$p.value})
+
+#j <- which(KRAS_LUAD %in% c("G12V"))
+G12C <- ifelse(KRAS_LUAD=="G12C",1,0)
+k <- names(which(apply(new.matmut,1,sum)>1 & apply(new.matmut,1,sum)<401))
+G12C.REST.overlap.genes <- apply(new.matmut[k,],1,function(x){fisher.test(as.numeric(G12C),as.numeric(x),alternative="greater")$p.value})
+G12C.REST.exclusive.genes <- apply(new.matmut[k,],1,function(x){ fisher.test(as.numeric(G12C),as.numeric(x),alternative="less")$p.value})
+
+
+
 
 foo <- as.data.frame(cbind(names(G12C.overlap.genes),as.numeric(-log10(as.numeric(G12C.overlap.genes)))))
 foo <- foo[-which(foo$V1=="KRAS"),]

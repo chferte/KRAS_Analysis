@@ -3,8 +3,7 @@
 # 14 Sept 2012
 
 
-# train a model of differential gene expression per KRAS codon in Lung Adenocarcinoma
-# for G12C,  in TCGA LUAD
+
 
 #load the different packages
 options(stringsAsFactors=FALSE)

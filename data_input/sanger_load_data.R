@@ -9,7 +9,7 @@ source("~/FELLOW/cferte/KRAS_Analysis/data_input/CellLine_input.R")
 
 SangerExpr <- getSangerExpr()
 
-# retrieve the names of the enes of the Sanger dataset
+# retrieve the names of the genes of the Sanger dataset
 library(org.Hs.eg.db)
 rownames(SangerExpr) <- sapply(strsplit(rownames(SangerExpr),split="_"),function(x){x[[1]]})
 tmp <- unlist(mget(x=rownames(SangerExpr),org.Hs.egSYMBOL,ifnotfound=NA))
