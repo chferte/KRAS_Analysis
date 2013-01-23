@@ -241,6 +241,7 @@ rm(tmp,tmp1)
 ###############################################################################################################################
 
 # load the MATMUT_GENE_LUAD (mutation matrix per gene)
+load("/home/cferte/FELLOW/cferte/KRAS_Analysis/KRAS_LUAD.RData")
 load(file="/home/cferte/FELLOW/cferte/KRAS_Analysis/MATMUT_GENE_LUAD.RData")
 new.matmut <- MATMUT_GENE_LUAD
 
@@ -279,42 +280,41 @@ setwd("/gluster/home/cferte/FELLOW/cferte/KRAS_Analysis/biological_info_meaning/
 #G12C and G12V vs WT
 foo <- as.data.frame(cbind(names(G12C.overlap.genes),as.numeric(-log10(as.numeric(G12C.overlap.genes)))))
 foo <- foo[-which(foo$V1=="KRAS"),]
-write.table(foo,file="G12Cgenesoverlap.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
+write.table(foo,file="G12C.WT.genesoverlap.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
 
 foo <- as.data.frame(cbind(names(G12C.exclusive.genes),as.numeric(-log10(as.numeric(G12C.exclusive.genes)))))
 foo <- foo[-which(foo$V1=="KRAS"),]
-write.table(foo,file="G12Cgenesexclusive.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
+write.table(foo,file="G12C.WT.genesexclusive.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
 
 foo <- as.data.frame(cbind(names(G12V.overlap.genes),as.numeric(-log10(as.numeric(G12V.overlap.genes)))))
 foo <- foo[-which(foo$V1=="KRAS"),]
-write.table(foo,file="G12Vgenesoverlap.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
+write.table(foo,file="G12V.WT.genesoverlap.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
 
 foo <- as.data.frame(cbind(names(G12V.exclusive.genes),as.numeric(-log10(as.numeric(G12V.exclusive.genes)))))
 foo <- foo[-which(foo$V1=="KRAS"),]
-write.table(foo,file="G12Vgenesexclusive.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
+write.table(foo,file="G12V.WT.genesexclusive.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
 
+#G12C vs G12V
 foo <- as.data.frame(cbind(names(G12C.G12V.overlap.genes),as.numeric(-log10(as.numeric(G12C.G12V.overlap.genes)))))
-foo <- foo[-which(foo$V1=="KRAS"),]
-write.table(foo,file="G12CG12Vgenesoverlap.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
+write.table(foo,file="G12C.G12V.genesoverlap.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
 
 foo <- as.data.frame(cbind(names(G12C.G12V.exclusive.genes),as.numeric(-log10(as.numeric(G12C.G12V.exclusive.genes)))))
-foo <- foo[-which(foo$V1=="KRAS"),]
-write.table(foo,file="G12CG12Vgenesexclusive.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
+write.table(foo,file="G12C.G12V.genesexclusive.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
 
-# G12C and G12V vs rest
+# G12C and G12V vs REST
 foo <- as.data.frame(cbind(names(G12C.REST.overlap.genes),as.numeric(-log10(as.numeric(G12C.REST.overlap.genes)))))
 foo <- foo[-which(foo$V1=="KRAS"),]
-write.table(foo,file="G12CRESTgenesoverlap.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
+write.table(foo,file="G12C.REST.genesoverlap.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
 
 foo <- as.data.frame(cbind(names(G12C.REST.exclusive.genes),as.numeric(-log10(as.numeric(G12C.REST.exclusive.genes)))))
 foo <- foo[-which(foo$V1=="KRAS"),]
-write.table(foo,file="G12Cgenesexclusive.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
+write.table(foo,file="G12C.REST.genesexclusive.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
 
 foo <- as.data.frame(cbind(names(G12V.REST.overlap.genes),as.numeric(-log10(as.numeric(G12V.REST.overlap.genes)))))
 foo <- foo[-which(foo$V1=="KRAS"),]
-write.table(foo,file="G12Vgenesoverlap.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
+write.table(foo,file="G12V.REST.genesoverlap.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
 
 foo <- as.data.frame(cbind(names(G12V.REST.exclusive.genes),as.numeric(-log10(as.numeric(G12V.REST.exclusive.genes)))))
 foo <- foo[-which(foo$V1=="KRAS"),]
-write.table(foo,file="G12Vgenesexclusive.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
+write.table(foo,file="G12V.REST.genesexclusive.rnk",row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
 
