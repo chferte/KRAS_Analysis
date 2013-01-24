@@ -19,6 +19,14 @@ hist(log10(tmp),breaks=100,col="red")
 G12C_GE_features
 save(G12C_GE_features,file="/home/cferte/FELLOW/cferte/KRAS_Analysis/biological_info_meaning/G12C_GE_features.rda")
 
+# make a correlation matrix with the TCGA gene expression data for the selected features
+rat <- LUAD_EXP[c(names(tmp)[which(tmp>10)]),]
+mus <- cor(t(rat))
+library(gplots)
+plot(density(mus[upper.tri(mus)]))
+heatmap.2(mus,trace="none",col=heat.colors(10),key=TRUE)
+heatmap.2(mus,key=T,col=greenred(10),scale="none",trace="none")
+
 # rank.features <-as.numeric(sort(tmp,index.return=T)$ix)
 # names(rank.features) <- rownames(selected)
 # # ResultBS <- c()
