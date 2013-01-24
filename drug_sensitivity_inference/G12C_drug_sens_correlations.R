@@ -52,7 +52,7 @@ res <- c(res,emp.pval)
 
 names(res) <- colnames(drug)
 res <- res[colnames(G12C_SENS)]
-tmp <- ifelse(res<.01,"red","grey60")
+tmp <- ifelse(res<.05,"red","grey60")
 
 boxplot(G12C_SENS,cex.axis=.7,las=2, ylab="spearman correlation (r)",col=tmp)
 abline(h=0,col="red",lty=2)
@@ -68,7 +68,7 @@ G12C_SENS_CCLE_PVAL <- res
 # plot the volcano plot for CCLE
 ###############################################################################
 
-P <- .01
+P <- .05
 sig.drugs <- -log10(G12C_SENS_CCLE_PVAL) > -log10(P)
 palette <- topo.colors(length(which(sig.drugs==TRUE)))
 cols <- rep("gray60",length(G12C_SENS_CCLE_PVAL))
@@ -130,7 +130,7 @@ for(k in colnames(drug)){
 
 names(res) <- colnames(drug)
 res <- res[colnames(G12C_SENS)]
-tmp <- ifelse(res<.01,"red","grey60")
+tmp <- ifelse(res<.05,"red","grey60")
 
 boxplot(G12C_SENS,cex.axis=.7,las=2, ylab="spearman correlation (r)",col=tmp)
 abline(h=0,col="red",lty=2)
@@ -159,7 +159,7 @@ G12C_SENS_SANGER_PVAL <- res
 ###############################################################################
 # plot the volcano plot for SANGER
 ###############################################################################
-P <- .01
+P <- .05
 sig.drugs <- -log10(G12C_SENS_SANGER_PVAL) > -log10(P)
 palette <- topo.colors(length(which(sig.drugs==TRUE)))
 cols <- rep("gray60",length(G12C_SENS_SANGER_PVAL))
@@ -172,10 +172,8 @@ plot(apply(G12C_SENS_SANGER_COR,2,mean)*-1, -log10(G12C_SENS_SANGER_PVAL),type="
      ylab="-log10(p)",xlab="spearman rho",xlim=c(-.5,.5))
 abline(h=-log10(P),lty=2,col="gray60")
 abline(v=c(-.5,.5),lty=2,col="gray60")
-legend(-0.2,3,legend=names(G12C_SENS_SANGER_PVAL)[sig.drugs],
+legend(-0.2,1,legend=names(G12C_SENS_SANGER_PVAL)[sig.drugs],
        pch=17,col=palette,cex=.8,xjust=.5)
-
-
 
 ###############################################################################
 # save the correlation objects

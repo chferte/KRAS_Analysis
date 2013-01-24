@@ -228,5 +228,5 @@ source("/home/cferte/FELLOW/cferte/KRAS_Analysis/model_performance/G12C_WT_perfo
 # ###############################################################################
 # # infer drug correlations in CCLE and Sanger
 # ###############################################################################
-#source("/home/cferte/FELLOW/cferte/KRAS_Analysis/drug_sensitivity_inference/G12C_drug_sens_correlations.R")
+source("/home/cferte/FELLOW/cferte/KRAS_Analysis/drug_sensitivity_inference/G12C_drug_sens_correlations.R")
 

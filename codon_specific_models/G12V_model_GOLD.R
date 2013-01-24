@@ -35,19 +35,6 @@ fit <- eBayes(lmFit(LUAD_EXP,model.matrix(~tmp)))
 hist(fit$p.value[,2],breaks=100, main="TCGA exp ~ KRAS")
 rm(tmp)
 
-# 
-# # see if the signal is different between G12C and G12V
-# tmp1 <- names(which(fit$p.value[,2]<.05))
-# tmp <- names(KRAS_LUAD)[which(KRAS_LUAD %in% c("G12C","G12V"))]
-# 
-# s <- svd(LUAD_EXP[tmp1,tmp]-rowMeans(LUAD_EXP[tmp1,tmp]))
-# boxplot(s$v[,1]~KRAS_LUAD[tmp],main="difference in G12C and G12V according to the Princ. Component 1")
-# stripchart(s$v[,1]~KRAS_LUAD[tmp],cex=.7,col="royalblue",method="jitter",vertical=TRUE,pch=20,add=TRUE)
-# title(sub=paste("P=",format(wilcox.test(s$v[,1]~KRAS_LUAD[tmp])$p.value,digits=3),"(wilcoxon test)"))
-# 
-# fit <- eBayes(lmFit(LUAD_EXP[tmp1,tmp],model.matrix(~KRAS_LUAD[tmp])))
-# hist(fit$p.value[,2],breaks=100, main="TCGA exp ~ KRAS G12C/V")
-# 
 
 ##########################################
 # load the Battle data 
@@ -64,14 +51,6 @@ tmp <- ifelse(KRAS_BATTLE != "WT",1,0)
 fit <- eBayes(lmFit(BATTLE_EXP,model.matrix(~tmp)))
 hist(fit$p.value[,2],breaks=100,main="BATTLE EXP ~ KRAS")
 
-# see if the signal is different between G12C and G12V
-tmp1 <- names(which(fit$p.value[,2]<.05))
-tmp <- names(KRAS_BATTLE)[which(KRAS_BATTLE %in% c("G12C","G12V"))]
-s <- svd(BATTLE_EXP[tmp1,tmp]-rowMeans(BATTLE_EXP[tmp1,tmp]))
-boxplot(s$v[,1]~KRAS_BATTLE[tmp],main="difference in G12C and G12V according to the Princ. Component 1 (BATTLE)")
-stripchart(s$v[,1]~KRAS_BATTLE[tmp],cex=.7,col="royalblue",method="jitter",vertical=TRUE,pch=20,add=TRUE)
-title(sub=paste("P=",format(wilcox.test(s$v[,1]~KRAS_BATTLE[tmp])$p.value,digits=3),"(wilcoxon test)"))
-
 ###############################################################
 # load the CHEMORES data  (without SCC and SCLC)
 ###############################################################
@@ -82,15 +61,6 @@ source("/home/cferte/FELLOW/cferte/KRAS_Analysis/data_input/Chemores_load_data.R
 tmp <- ifelse(KRAS_CHEMORES!="WT",1,0)
 fit <- eBayes(lmFit(CHEMORES_EXP,model.matrix(~tmp)))
 hist(fit$p.value[,2],breaks=100, main="chemores exp ~ KRAS")
-
-# see if the signal is different between G12C and G12V
-tmp1 <- names(which(fit$p.value[,2]<.05))
-tmp <- names(KRAS_CHEMORES)[which(KRAS_CHEMORES %in% c("G12C","G12V"))]
-s <- svd(CHEMORES_EXP[tmp1,tmp]-rowMeans(CHEMORES_EXP[tmp1,tmp]))
-boxplot(s$v[,1]~KRAS_CHEMORES[tmp],main="difference in G12C and G12V according to the Princ. Component 1 (CHEMORES)")
-stripchart(s$v[,1]~KRAS_CHEMORES[tmp],cex=.7,col="royalblue",method="jitter",vertical=TRUE,pch=20,add=TRUE)
-title(sub=paste("P=",format(wilcox.test(s$v[,1]~KRAS_CHEMORES[tmp])$p.value,digits=3),"(wilcoxon test)"))
-
 
 ###############################################################
 # load the CCLE data (snm normalized) 
@@ -104,15 +74,6 @@ fit <- eBayes(lmFit(CCLE_EXP,model.matrix(~tmp)))
 hist(fit$p.value[,2],breaks=100, main="CCLE exp ~ KRAS")
 
 
-# see if the signal is different between G12C and G12V
-tmp1 <- names(which(fit$p.value[,2]<.01))
-tmp <- names(KRAS_CCLE)[which(KRAS_CCLE %in% c("G12C","G12V"))]
-s <- svd(CCLE_EXP[tmp1,tmp]-rowMeans(CCLE_EXP[tmp1,tmp]))
-boxplot(s$v[,1]~KRAS_CCLE[tmp],main="difference in G12C and G12V according to the Princ. Component 1 (CCLE)")
-stripchart(s$v[,1]~KRAS_CCLE[tmp],cex=.7,col="royalblue",method="jitter",vertical=TRUE,pch=20,add=TRUE)
-title(sub=paste("P=",format(wilcox.test(s$v[,1]~KRAS_CCLE[tmp])$p.value,digits=3),"(wilcoxon test)"))
-
-
 ##########################################
 # load the Sanger data 
 ##########################################
@@ -122,16 +83,6 @@ source("~/FELLOW/cferte/KRAS_Analysis/data_input/sanger_load_data.R")
 tmp <- ifelse(KRAS_SANGER!="WT",1,0)
 fit <- eBayes(lmFit(SANGER_EXP,model.matrix(~tmp)))
 hist(fit$p.value[,2],breaks=100, main="SANGER exp ~ KRAS")
-
-# see if the signal is different between G12C and G12V
-tmp1 <- names(which(fit$p.value[,2]<.01))
-tmp <- names(KRAS_SANGER)[which(KRAS_SANGER %in% c("G12C","G12V"))]
-s <- svd(SANGER_EXP[tmp1,tmp]-rowMeans(SANGER_EXP[tmp1,tmp]))
-boxplot(s$v[,1]~KRAS_SANGER[tmp],main="difference in G12C and G12V according to the Princ. Component 1 (SANGER)")
-stripchart(s$v[,1]~KRAS_SANGER[tmp],cex=.7,col="royalblue",method="jitter",vertical=TRUE,pch=20,add=TRUE)
-title(sub=paste("P=",format(wilcox.test(s$v[,1]~KRAS_SANGER[tmp])$p.value,digits=3),"(wilcoxon test)"))
-
-
 
 #####################################################################################
 # restrict to the probes that are highly correlated between sanger ccle
@@ -225,41 +176,7 @@ KRAS_SANGER <- KRAS_SANGER[tmp]
 SANGER_EXP <- SANGER_EXP[,tmp]
 rm(tmp)
 
-##############################################################################################
-# explore the biological meaning of the significant overlapping genes (fisher exact test) to see what is the biological signal 
-##############################################################################################
 
-tmp <- ifelse(KRAS_LUAD =="G12V",1,0)
-fit <- eBayes(lmFit(LUAD_EXP[,names(tmp)],model.matrix(~tmp)))
-hist(fit$p.value[,2],breaks=100)
-table(fit$p.value[,2]<.05)
-
-tmp <- ifelse(KRAS_CHEMORES=="G12V",1,0)
-fit2 <- eBayes(lmFit(CHEMORES_EXP,model.matrix(~tmp)))
-hist(fit2$p.value[,2],breaks=100)
-table(fit2$p.value[,2]<.05)
-
-tmp <- ifelse(KRAS_BATTLE=="G12V",1,0)
-fit3 <- eBayes(lmFit(BATTLE_EXP,model.matrix(~tmp)))
-hist(fit3$p.value[,2],breaks=100)
-table(fit3$p.value[,2]<.05)
-
-tmp <- ifelse(KRAS_CCLE=="G12V",1,0)
-fit4 <- eBayes(lmFit(CCLE_EXP,model.matrix(~tmp)))
-hist(fit4$p.value[,2],breaks=100)
-table(fit4$p.value[,2]<.05)
-
-tmp <- ifelse(KRAS_SANGER=="G12V",1,0)
-fit5 <- eBayes(lmFit(SANGER_EXP,model.matrix(~tmp)))
-hist(fit5$p.value[,2],breaks=100)
-table(fit5$p.value[,2]<.05)
-
-# biological meaning of the intersect
-BIO_p <- intersect(intersect(names(which(fit$p.value[,2]<.1)), names(which(fit3$p.value[,2]<.1))),names(which(fit2$p.value[,2]<.1)))
-BIO_p_cl <- intersect(names(which(fit4$p.value[,2]<.1)), names(which(fit5$p.value[,2]<.1)))
-paste(BIO_p,collapse=" ")
-paste(BIO_p_cl,collapse=" ")
-rm(BIO_p,tmp)
 
 ###################################################################################################################
 # train our predictive model of G12V in TCGA LUAD
