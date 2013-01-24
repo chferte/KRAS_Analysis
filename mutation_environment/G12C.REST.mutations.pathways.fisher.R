@@ -37,11 +37,11 @@ factor[colnames(tmp) %in% names(KRAS_LUAD)[KRAS_LUAD %in% "G12C"]] <- "G12C"
 R <- test.mut.pathways(MUTtbl=tmp, gsets=gsets, classFactor=factor(factor))
 
 # compute the permutation test
-R.null <- replicate(100,test.mut.pathways(MUTtbl=tmp, gsets=gsets, factor(factor)[sample(ncol(tmp))]))
+R.null <- replicate(10000,test.mut.pathways(MUTtbl=tmp, gsets=gsets, factor(factor)[sample(ncol(tmp))]))
 
 emp.pval <- c()
 res <- sapply(names(R),function(x){
-  emp.val <- c(emp.pval,length(which(R.null[x,]<R[x]))/100)
+  emp.val <- c(emp.pval,length(which(R.null[x,]<R[x]))/10000)
 })
 
 G12C.REST.fisher <- res
