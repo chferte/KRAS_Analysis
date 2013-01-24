@@ -30,11 +30,6 @@ synapseLogin("charles.ferte@sagebase.org","charles")
 source("/home/cferte/FELLOW/cferte/KRAS_Analysis/data_input/TCGA_LUAD_input.R")
 par(mfrow=c(1,1))
 
-# see if here is some signal with KRAS status
-tmp <- ifelse(KRAS_LUAD!="WT",1,0)
-fit <- eBayes(lmFit(LUAD_EXP,model.matrix(~tmp)))
-hist(fit$p.value[,2],breaks=100, main="TCGA exp ~ KRAS")
-rm(tmp)
 
 ###############################################################
 # load the CCLE data (snm normalized) 
@@ -44,19 +39,21 @@ source("/home/cferte/FELLOW/cferte/KRAS_Analysis/data_input/ccle_load_data.R")
 names(KRAS_CCLE) <- sub(pattern="_LUNG",replacement="",x=names(KRAS_CCLE))
 colnames(CCLE_EXP) <- sub(pattern="_LUNG",replacement="",x=colnames(CCLE_EXP))
 
-# see if here is some signal with KRAS status
-tmp <- ifelse(KRAS_CCLE!="WT",1,0)
-fit <- eBayes(lmFit(CCLE_EXP,model.matrix(~tmp)))
-hist(fit$p.value[,2],breaks=100, main="CCLE exp ~ KRAS")
+
+##########################################
+# load the Sanger data 
+##########################################
+source("~/FELLOW/cferte/KRAS_Analysis/data_input/sanger_load_data.R")
 
 #####################################################################################
-# make all datasets comparable 
+# make all datasets coherents 
 #####################################################################################
 
 # # first make all the db have coherent features
-tmp1 <- intersect(rownames(CCLE_EXP),rownames(LUAD_EXP))
+tmp1 <- intersect(intersect(rownames(CCLE_EXP),rownames(LUAD_EXP)),rownames(SANGER_EXP))
 LUAD_EXP <- LUAD_EXP[tmp1,]
 CCLE_EXP <- CCLE_EXP[tmp1,]
+SANGER_EXP <- SANGER_EXP[tmp1,]
 rm(tmp1)
 
 # rescale the data (chemores) to have the same mean and variance than the LUAD
@@ -70,16 +67,18 @@ normalize_to_X <- function(mean.x, sd.x, Y){
 }
 
 CCLE_EXP <- normalize_to_X(rowMeans(LUAD_EXP),apply(LUAD_EXP,1,sd),CCLE_EXP)
+SANGER_EXP <- normalize_to_X(rowMeans(LUAD_EXP),apply(LUAD_EXP,1,sd),SANGER_EXP)
 
 # get rid of the probes that are the less variant
 tmp <- apply(LUAD_EXP,1,sd)
 tmp1 <- which(tmp>quantile(tmp,probs=.2))
 LUAD_EXP <- LUAD_EXP[tmp1,]
 CCLE_EXP <- CCLE_EXP[tmp1,]
+SANGER_EXP <- SANGER_EXP[tmp1,]
 rm(tmp1,tmp)
 
 #############################################################################
-# input the LUAD TCGA mutations data
+# load the LUAD TCGA mutations data
 #############################################################################
 load(file="/home/cferte/FELLOW/cferte/KRAS_Analysis/MATMUT_GENE_LUAD.RData")
 colnames(MATMUT_GENE_LUAD) <- substr(x=colnames(MATMUT_GENE_LUAD),1,16)
@@ -88,7 +87,7 @@ mutations.luad <- MATMUT_GENE_LUAD[,tmp]
 rm(MATMUT_GENE_LUAD)
 
 # ################################################################################################################
-# load the ccle data
+# load the ccle mutations data
 # ################################################################################################################
 MAF1 <- read.delim("/home/cferte/cell_line_data/CCLE_hybrid_capture1650_hg19_NoCommonSNPs_NoNeutralVariants_CDS_2012.05.07.maf",header=TRUE)
 MAF1 <- MAF1[which(MAF1$Hugo_Symbol!="Unknown"),]
@@ -117,32 +116,61 @@ mutations.ccle <- mutations.ccle[,tmp]
 CCLE_EXP <- CCLE_EXP[,tmp]
 KRAS_CCLE <- KRAS_CCLE[tmp]
 
-#############################################################################
-# focus on G12C only
-#############################################################################
+# ################################################################################################################
+# load the SANGER mutations data
+# ################################################################################################################
+mutations.sanger <- read.csv("/home/cferte/cell_line_data/Sanger_gdsc_mutation_w3.csv",header=TRUE)
+rownames(mutations.sanger) <- toupper(gsub(pattern="-",replacement="",mutations.sanger$Cell.Line))
+mutations.sanger <- t(mutations.sanger[ grep(pattern="NSCLC",x=mutations.sanger$Tissue),])
+mutations.sanger[grep(pattern="na",x=mutations.sanger)] <- NA
+mutations.sanger[grep(pattern="wt",x=mutations.sanger)] <- "0"
 
-tmp <- names(KRAS_LUAD)[which(KRAS_LUAD %in% c("G12C","WT"))]
-KRAS_LUAD <- KRAS_LUAD[tmp]
-LUAD_EXP <- LUAD_EXP[,tmp]
-mutations.luad <- mutations.luad[,tmp]
-rm(tmp)
+# make the samples of Sanger coherent between mutations and gene exp and KRAS vector
+tmp <- intersect(colnames(mutations.sanger),colnames(SANGER_EXP))
+mutations.sanger <- mutations.sanger[,tmp]
+SANGER_EXP <- SANGER_EXP[,tmp]
+KRAS_SANGER <- KRAS_SANGER[tmp]
 
-tmp <- names(KRAS_CCLE)[which(KRAS_CCLE %in% c("G12C","WT"))]
-KRAS_CCLE <- KRAS_CCLE[tmp]
-CCLE_EXP <- CCLE_EXP[,tmp]
-mutations.ccle <- mutations.ccle[,tmp]
-rm(tmp)
+# #############################################################################
+# # focus on G12C & WT only 
+# #############################################################################
+# 
+# tmp <- names(KRAS_LUAD)[which(KRAS_LUAD %in% c("G12C","WT"))]
+# KRAS_LUAD <- KRAS_LUAD[tmp]
+# LUAD_EXP <- LUAD_EXP[,tmp]
+# mutations.luad <- mutations.luad[,tmp]
+# rm(tmp)
+# 
+# tmp <- names(KRAS_CCLE)[which(KRAS_CCLE %in% c("G12C","WT"))]
+# KRAS_CCLE <- KRAS_CCLE[tmp]
+# CCLE_EXP <- CCLE_EXP[,tmp]
+# mutations.ccle <- mutations.ccle[,tmp]
+# rm(tmp)
+# 
+# tmp <- names(KRAS_SANGER)[which(KRAS_SANGER %in% c("G12C","WT"))]
+# KRAS_SANGER <- KRAS_SANGER[tmp]
+# SANGER_EXP <- SANGER_EXP[,tmp]
+# mutations.sanger <- mutations.sanger[,tmp]
+# rm(tmp)
 
 #########################################################################
-# make coherent the genes of mutations.ccle and .luad 
-
-tmp <- intersect(rownames(mutations.ccle),rownames(mutations.luad))
+# make coherent the genes of mutations.ccle and .luad and remove KRAS
+#########################################################################
+mutations.ccle <- mutations.ccle[-grep("KRAS",x=rownames(mutations.ccle)),]
+tmp <- intersect(intersect(rownames(mutations.ccle),rownames(mutations.luad)),rownames(mutations.sanger))
+mutations.sanger <- mutations.sanger[tmp,]
+mutations.sanger <- mutations.sanger[names(which(!is.na(mutations.sanger[,3]))),]
+tmp <- intersect(intersect(rownames(mutations.ccle),rownames(mutations.luad)),rownames(mutations.sanger))
 mutations.ccle <- mutations.ccle[tmp,]
 mutations.luad <- mutations.luad[tmp,]
+mutations.sanger <- mutations.sanger[tmp,]
 tmp <- paste(tmp,"_mut",sep="")
-identical(rownames(mutations.ccle),rownames(mutations.luad))
 rownames(mutations.ccle) <- tmp
 rownames(mutations.luad) <- tmp
+rownames(mutations.sanger) <- tmp
+mutations.sanger[mutations.sanger!=0] <- 1
+mutations.sanger <- apply(mutations.sanger,2,as.numeric)
+
 
 ###################################################################################################################
 # train our predictive model of G12C in TCGA LUAD
@@ -154,12 +182,16 @@ rownames(mutations.luad) <- tmp
 par(mfrow=c(1,1))
 require(glmnet)
 G12C_LUAD <- ifelse(KRAS_LUAD=="G12C",1,0)
+G12C_SANGER <- ifelse(KRAS_SANGER=="G12C",1,0)
+G12C_CCLE <- ifelse(KRAS_CCLE=="G12C",1,0)
+
 table(G12C_LUAD)
-N <- 100
+N <- 20
 fit <- c()
 #features <- c()
 selected <- c()
 yhat_CCLE <- c()
+yhat_SANGER <- c()
 models <- 0
 i <- 0
 while(models<N)
@@ -176,29 +208,14 @@ while(models<N)
     selected <- cbind(selected , as.numeric(fit$beta))
     
     yhat_CCLE <- cbind(yhat_CCLE,predict(fit, t(rbind(CCLE_EXP,mutations.ccle)),type="response"))
-    
+    yhat_SANGER <- cbind(yhat_SANGER,predict(fit, t(rbind(SANGER_EXP,mutations.sanger)),type="response"))
     models <- dim(yhat_CCLE)[2]
   } }
 
 rownames(selected) <- rownames(fit$beta)
 
-
-
-#######################################################
-#evaluate the performance of the model in ccle
-#######################################################
-tmp <- ifelse(KRAS_CCLE=="G12C",1,0)
-names(tmp) <- names(KRAS_CCLE)
-G12C_CCLE <- tmp
-rm(tmp)
-
-
-boxplot(yhat_CCLE~G12C_CCLE,xlab=c("KRAS G12C mutational status"),ylab="model of G12C",main="predicting KRAS G12C in ccle
-(modele trained in TCGA)")
-stripchart(yhat_CCLE~G12C_CCLE,vertical=TRUE,pch=20,add=T,col="royalblue",cex=.7,method="jitter")
-
 ##################################################################
-# plot a ROC curve to asses the performance of our model in ccle
+# plot a ROC curve to asses the performance of our model in ccle and in sanger
 ##################################################################
 
 AUC_CCLE <- c()
@@ -208,11 +225,26 @@ for (i in c(1:N)){
   AUC <- performance(prediction.obj=Pred,"auc")
   AUC_CCLE <- c(AUC_CCLE,as.numeric(AUC@y.values))
 }
-boxplot(AUC_CCLE)
+
+
+AUC_SANGER <- c()
+for (i in c(1:N)){
+  Pred <- prediction(as.numeric(yhat_SANGER[,i]),as.numeric(G12C_SANGER))
+  Perf <- performance(prediction.obj=Pred,"tpr","fpr")
+  AUC <- performance(prediction.obj=Pred,"auc")
+  AUC_SANGER <- c(AUC_SANGER,as.numeric(AUC@y.values))
+}
+
+par(mfrow=c(1,1))
+tmp <- cbind(AUC_CCLE,AUC_SANGER)
+rownames(tmp) <- c(1:dim(tmp)[1])
+boxplot(tmp,ylab="AUC",outline=FALSE,ylim=c(.5,1))
+stripchart(list(CCLE=tmp[,1],SANGER=tmp[,2]), add=T,vertical=TRUE,method="jitter",col="red",pch=20)
+abline(h=c(.5,.6,.7,.8,.9),lty=2,lwd=.7)
 
 
 ################
-sort(apply(selected,1,sum),decreasing=TRUE)[1:50]
+sort(apply(selected!=0,1,sum),decreasing=TRUE)[1:50]
 
 
 # ###############################################################################
