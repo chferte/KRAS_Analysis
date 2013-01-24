@@ -130,7 +130,6 @@ text(x=.7,y=.4,labels=paste("AUC=",format(x=AUC@y.values,digits=2)),col="royalbl
 par(mfrow=c(1,1))
 tmp <- cbind(AUC_BATTLE,AUC_CHEMORES,AUC_CCLE,AUC_SANGER)
 rownames(tmp) <- c(1:dim(tmp)[1])
-boxplot(tmp,ylab="AUC",outline=FALSE)
+boxplot(tmp,ylab="AUC",outline=FALSE,ylim=c(.5,1))
 stripchart(list(BATTLE=tmp[,1], CHEMORES=tmp[,2],CCLE=tmp[,3],SANGER=tmp[,4]), add=T,vertical=TRUE,method="jitter",col="red",pch=20)
-abline(h=c(.4,.5,.6,.7,.8),lty=2,lwd=.7)
-
+abline(h=c(.5,.6,.7,.8,.9),lty=2,lwd=.7)
