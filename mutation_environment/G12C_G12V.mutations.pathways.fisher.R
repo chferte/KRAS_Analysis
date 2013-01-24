@@ -20,7 +20,7 @@ test.mut.pathways <- function(MUTtbl, gsets, classFactor, countThreshold=1){
     cs <- colSums(MUTtbl[idxs,])
     stat <- as.numeric(cs >= countThreshold )
     if(sum(stat) < 3 | sum(stat)==length(stat)){ return(NA) }
-    fisher.test(stat,classFactor)$p.value
+    fisher.test(stat,classFactor,alternative="less")$p.value
   })
 }
 

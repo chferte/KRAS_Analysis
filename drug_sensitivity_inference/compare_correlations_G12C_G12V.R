@@ -43,8 +43,8 @@ diff.corr <- function( r1, n1, r2, n2 ){
 
 
 #  look at the differences in the correlations with drug sensitivity in CCLE between G12C and G12V
-N_G12C_CCLE <- 64
-N_G12V_CCLE <-- 59
+N_G12C_CCLE <- 79
+N_G12V_CCLE <-- 79
 R_G12C <- apply(G12C_SENS_CCLE_COR,2,median)
 R_G12V <- apply(G12V_SENS_CCLE_COR,2,median)
 
@@ -53,23 +53,7 @@ p.val <- c()
 for(i in c(1:length(colnames(G12C_SENS_CCLE_COR))))
 { p.val <- c(p.val,diff.corr(r1=R_G12C[i],r2=R_G12V[i],n1=N_G12C_CCLE,n2=N_G12V_CCLE))}
 sort(p.val)
-# 
-# #  volcano plot of the r to z transformation
-# P <- .05
-# sig.drugs <- -log10(p.val) > -log10(P)
-# palette <- topo.colors(length(which(sig.drugs==TRUE)))
-# cols <- rep("gray60",length(M))
-# cols[sig.drugs] <- palette
-# pch <- rep(16,length(M))
-# pch[sig.drugs] <- 17
-# cex <- rep(.6, length(M))
-# cex[sig.drugs] <- 1
-# plot(M, -log10(p.val),type="p",pch=pch,cex=cex,col=cols,
-#      ylab="-log10(p)",xlab="difference in the correlations (r-to-z)",xlim=c(-.5,.5))
-# abline(h=-log10(P),lty=2,col="gray60")
-# abline(v=c(-.5,.5),lty=2,col="gray60")
-# legend(-0,1.5,legend=names(p.val)[sig.drugs],
-#        pch=17,col=palette,cex=.8,xjust=.5)
+
 
 # plot the median spearman rho of G12C and G12V for the drugs that exhibit differential sensitivity between G12C and G12V
 #drug.names <- names(which(sig.drugs==TRUE))
@@ -90,8 +74,8 @@ p.val[drug.names]
 
 #  SANGER
 #  look at the differences in the correlations with drug sensitivity in SANGER between G12C and G12V
-N_G12C_SANGER <- 98
-N_G12V_SANGER <- 96
+N_G12C_SANGER <- 67
+N_G12V_SANGER <- 67
 R_G12C <- apply(G12C_SENS_SANGER_COR,2,median)
 R_G12V <- apply(G12V_SENS_SANGER_COR,2,median)
 

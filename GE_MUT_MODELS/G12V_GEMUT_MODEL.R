@@ -4,7 +4,7 @@
 
 
 # train a model of differential gene expression per KRAS codon in Lung Adenocarcinoma
-# for G12C,  in TCGA LUAD
+# for G12V,  in TCGA LUAD
 
 #load the different packages
 options(stringsAsFactors=FALSE)
@@ -20,7 +20,7 @@ source("/home/cferte/FELLOW/cferte/KRAS_Project/JUSTIN_PREDICT_CCLE/code/lung_an
 synapseLogin("charles.ferte@sagebase.org","charles")
 
 ###############################################################
-# run the analysis for the G12C in the TCGA LUAD  & CHEMORES (G12C vs any other KRAS)
+# run the analysis for the G12V in the TCGA LUAD  & CHEMORES (G12V vs any other KRAS)
 ###############################################################
 
 ###############################################################
@@ -162,22 +162,22 @@ SANGER_EXP <- SANGER_EXP[,tmp]
 KRAS_SANGER <- KRAS_SANGER[tmp]
 
 # # #############################################################################
-# # # focus on G12C & WT only 
+# # # focus on G12V & WT only 
 # # #############################################################################
 # 
-# tmp <- names(KRAS_LUAD)[which(KRAS_LUAD %in% c("G12C","WT"))]
+# tmp <- names(KRAS_LUAD)[which(KRAS_LUAD %in% c("G12V","WT"))]
 # KRAS_LUAD <- KRAS_LUAD[tmp]
 # LUAD_EXP <- LUAD_EXP[,tmp]
 # mutations.luad <- mutations.luad[,tmp]
 # rm(tmp)
 # 
-# tmp <- names(KRAS_CCLE)[which(KRAS_CCLE %in% c("G12C","WT"))]
+# tmp <- names(KRAS_CCLE)[which(KRAS_CCLE %in% c("G12V","WT"))]
 # KRAS_CCLE <- KRAS_CCLE[tmp]
 # CCLE_EXP <- CCLE_EXP[,tmp]
 # mutations.ccle <- mutations.ccle[,tmp]
 # rm(tmp)
 # 
-# tmp <- names(KRAS_SANGER)[which(KRAS_SANGER %in% c("G12C","WT"))]
+# tmp <- names(KRAS_SANGER)[which(KRAS_SANGER %in% c("G12V","WT"))]
 # KRAS_SANGER <- KRAS_SANGER[tmp]
 # SANGER_EXP <- SANGER_EXP[,tmp]
 # mutations.sanger <- mutations.sanger[,tmp]
@@ -203,7 +203,7 @@ mutations.sanger <- apply(mutations.sanger,2,as.numeric)
 
 
 ###################################################################################################################
-# train our predictive model of G12C in TCGA LUAD
+# train our predictive model of G12V in TCGA LUAD
 # using a penalized regression approach  
 # with alpha=.1 (more ridge) and determine lambda using nfolds= 5
 # the robustness of the model is increased by boostrapping (n=100)
@@ -211,11 +211,11 @@ mutations.sanger <- apply(mutations.sanger,2,as.numeric)
 ###################################################################################################################
 par(mfrow=c(1,1))
 require(glmnet)
-G12C_LUAD <- ifelse(KRAS_LUAD=="G12C",1,0)
-G12C_SANGER <- ifelse(KRAS_SANGER=="G12C",1,0)
-G12C_CCLE <- ifelse(KRAS_CCLE=="G12C",1,0)
+G12V_LUAD <- ifelse(KRAS_LUAD=="G12V",1,0)
+G12V_SANGER <- ifelse(KRAS_SANGER=="G12V",1,0)
+G12V_CCLE <- ifelse(KRAS_CCLE=="G12V",1,0)
 
-table(G12C_LUAD)
+table(G12V_LUAD)
 N <- 50
 fit <- c()
 #features <- c()
@@ -227,9 +227,9 @@ i <- 0
 while(models<N)
 {
   
-  j <- c(names(which(G12C_LUAD==1)), sample(names(which(G12C_LUAD==0)),replace=TRUE))
-  cv.fit <- cv.glmnet(t(rbind(LUAD_EXP[,j],mutations.luad[,j])), factor(G12C_LUAD[j]), nfolds=3, alpha=.1, family="binomial")
-  fit <- glmnet(x=t(rbind(LUAD_EXP[,j],mutations.luad[,j])),y=factor(G12C_LUAD[j]),family="binomial",alpha=.1,lambda=cv.fit$lambda.1se)
+  j <- c(names(which(G12V_LUAD==1)), sample(names(which(G12V_LUAD==0)),replace=TRUE))
+  cv.fit <- cv.glmnet(t(rbind(LUAD_EXP[,j],mutations.luad[,j])), factor(G12V_LUAD[j]), nfolds=3, alpha=.1, family="binomial")
+  fit <- glmnet(x=t(rbind(LUAD_EXP[,j],mutations.luad[,j])),y=factor(G12V_LUAD[j]),family="binomial",alpha=.1,lambda=cv.fit$lambda.1se)
   if(length(which(abs(as.numeric(fit$beta))> 10^-5))>10)
   {
     i=i+1
@@ -250,7 +250,7 @@ rownames(selected) <- rownames(fit$beta)
 
 AUC_CCLE <- c()
 for (i in c(1:N)){
-  Pred <- prediction(as.numeric(yhat_CCLE[,i]),as.numeric(G12C_CCLE))
+  Pred <- prediction(as.numeric(yhat_CCLE[,i]),as.numeric(G12V_CCLE))
   Perf <- performance(prediction.obj=Pred,"tpr","fpr")
   AUC <- performance(prediction.obj=Pred,"auc")
   AUC_CCLE <- c(AUC_CCLE,as.numeric(AUC@y.values))
@@ -259,7 +259,7 @@ for (i in c(1:N)){
 
 AUC_SANGER <- c()
 for (i in c(1:N)){
-  Pred <- prediction(as.numeric(yhat_SANGER[,i]),as.numeric(G12C_SANGER))
+  Pred <- prediction(as.numeric(yhat_SANGER[,i]),as.numeric(G12V_SANGER))
   Perf <- performance(prediction.obj=Pred,"tpr","fpr")
   AUC <- performance(prediction.obj=Pred,"auc")
   AUC_SANGER <- c(AUC_SANGER,as.numeric(AUC@y.values))
@@ -280,5 +280,5 @@ sort(apply(selected!=0,1,sum),decreasing=TRUE)[1:50]
 # ###############################################################################
 # # infer drug correlations in CCLE and Sanger
 # ###############################################################################
-source("/home/cferte/FELLOW/cferte/KRAS_Analysis/drug_sensitivity_inference/G12C_drug_sens_correlations.R")
+source("/home/cferte/FELLOW/cferte/KRAS_Analysis/drug_sensitivity_inference/G12V_drug_sens_correlations.R")
 
