@@ -35,6 +35,7 @@ factor <- rep("REST", ncol(tmp))
 factor[colnames(tmp) %in% names(KRAS_LUAD)[KRAS_LUAD %in% "G12C"]] <- "G12C"
 
 R <- test.mut.pathways(MUTtbl=tmp, gsets=gsets, classFactor=factor(factor))
+sort(R)[1:10]
 
 # compute the permutation test
 R.null <- replicate(10000,test.mut.pathways(MUTtbl=tmp, gsets=gsets, factor(factor)[sample(ncol(tmp))]))

@@ -164,24 +164,24 @@ KRAS_SANGER <- KRAS_SANGER[tmp]
 # # #############################################################################
 # # # focus on G12C & WT only 
 # # #############################################################################
-# 
-# tmp <- names(KRAS_LUAD)[which(KRAS_LUAD %in% c("G12C","WT"))]
-# KRAS_LUAD <- KRAS_LUAD[tmp]
-# LUAD_EXP <- LUAD_EXP[,tmp]
-# mutations.luad <- mutations.luad[,tmp]
-# rm(tmp)
-# 
-# tmp <- names(KRAS_CCLE)[which(KRAS_CCLE %in% c("G12C","WT"))]
-# KRAS_CCLE <- KRAS_CCLE[tmp]
-# CCLE_EXP <- CCLE_EXP[,tmp]
-# mutations.ccle <- mutations.ccle[,tmp]
-# rm(tmp)
-# 
-# tmp <- names(KRAS_SANGER)[which(KRAS_SANGER %in% c("G12C","WT"))]
-# KRAS_SANGER <- KRAS_SANGER[tmp]
-# SANGER_EXP <- SANGER_EXP[,tmp]
-# mutations.sanger <- mutations.sanger[,tmp]
-# rm(tmp)
+
+tmp <- names(KRAS_LUAD)[which(KRAS_LUAD %in% c("G12C","WT"))]
+KRAS_LUAD <- KRAS_LUAD[tmp]
+LUAD_EXP <- LUAD_EXP[,tmp]
+mutations.luad <- mutations.luad[,tmp]
+rm(tmp)
+
+tmp <- names(KRAS_CCLE)[which(KRAS_CCLE %in% c("G12C","WT"))]
+KRAS_CCLE <- KRAS_CCLE[tmp]
+CCLE_EXP <- CCLE_EXP[,tmp]
+mutations.ccle <- mutations.ccle[,tmp]
+rm(tmp)
+
+tmp <- names(KRAS_SANGER)[which(KRAS_SANGER %in% c("G12C","WT"))]
+KRAS_SANGER <- KRAS_SANGER[tmp]
+SANGER_EXP <- SANGER_EXP[,tmp]
+mutations.sanger <- mutations.sanger[,tmp]
+rm(tmp)
 
 #########################################################################
 # make coherent the genes of mutations.ccle and .luad and remove KRAS

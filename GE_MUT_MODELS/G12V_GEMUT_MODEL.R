@@ -16,6 +16,7 @@ library(limma)
 library(caret)
 library(glmnet)
 library(snm)
+library(synapseClient)
 source("/home/cferte/FELLOW/cferte/KRAS_Project/JUSTIN_PREDICT_CCLE/code/lung_analysis_functions.R")
 synapseLogin("charles.ferte@sagebase.org","charles")
 
@@ -164,24 +165,24 @@ KRAS_SANGER <- KRAS_SANGER[tmp]
 # # #############################################################################
 # # # focus on G12V & WT only 
 # # #############################################################################
-# 
-# tmp <- names(KRAS_LUAD)[which(KRAS_LUAD %in% c("G12V","WT"))]
-# KRAS_LUAD <- KRAS_LUAD[tmp]
-# LUAD_EXP <- LUAD_EXP[,tmp]
-# mutations.luad <- mutations.luad[,tmp]
-# rm(tmp)
-# 
-# tmp <- names(KRAS_CCLE)[which(KRAS_CCLE %in% c("G12V","WT"))]
-# KRAS_CCLE <- KRAS_CCLE[tmp]
-# CCLE_EXP <- CCLE_EXP[,tmp]
-# mutations.ccle <- mutations.ccle[,tmp]
-# rm(tmp)
-# 
-# tmp <- names(KRAS_SANGER)[which(KRAS_SANGER %in% c("G12V","WT"))]
-# KRAS_SANGER <- KRAS_SANGER[tmp]
-# SANGER_EXP <- SANGER_EXP[,tmp]
-# mutations.sanger <- mutations.sanger[,tmp]
-# rm(tmp)
+
+tmp <- names(KRAS_LUAD)[which(KRAS_LUAD %in% c("G12V","WT"))]
+KRAS_LUAD <- KRAS_LUAD[tmp]
+LUAD_EXP <- LUAD_EXP[,tmp]
+mutations.luad <- mutations.luad[,tmp]
+rm(tmp)
+
+tmp <- names(KRAS_CCLE)[which(KRAS_CCLE %in% c("G12V","WT"))]
+KRAS_CCLE <- KRAS_CCLE[tmp]
+CCLE_EXP <- CCLE_EXP[,tmp]
+mutations.ccle <- mutations.ccle[,tmp]
+rm(tmp)
+
+tmp <- names(KRAS_SANGER)[which(KRAS_SANGER %in% c("G12V","WT"))]
+KRAS_SANGER <- KRAS_SANGER[tmp]
+SANGER_EXP <- SANGER_EXP[,tmp]
+mutations.sanger <- mutations.sanger[,tmp]
+rm(tmp)
 
 #########################################################################
 # make coherent the genes of mutations.ccle and .luad and remove KRAS
@@ -280,5 +281,5 @@ sort(apply(selected!=0,1,sum),decreasing=TRUE)[1:50]
 # ###############################################################################
 # # infer drug correlations in CCLE and Sanger
 # ###############################################################################
-source("/home/cferte/FELLOW/cferte/KRAS_Analysis/drug_sensitivity_inference/G12V_drug_sens_correlations.R")
+#source("/home/cferte/FELLOW/cferte/KRAS_Analysis/drug_sensitivity_inference/G12V_drug_sens_correlations.R")
 

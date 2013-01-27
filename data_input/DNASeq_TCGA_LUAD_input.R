@@ -16,7 +16,6 @@ options(stringsAsFactors=FALSE)
 #######################################################################################################
 # 1. read the maf file and name it MAF 
 #######################################################################################################
-#MAF <- read.delim(file="/home/jguinney/projects/AZRasPaper/data~/luad/LUAD.exome.cleaned.somatic.maf",header=T,skip=1)
 MAF <- read.delim(file="/home/jguinney/projects/tcgaras/data~/PR_TCGA_LUAD_PAIR_Capture_All_Pairs_QCPASS.aggregated.capture.tcga.uuid.somatic.maf",header=T,skip=2)
 MAF$Hugo_Symbol <- as.character(MAF$Hugo_Symbol)
 MAF$Tumor_Sample_Barcode <- as.character(MAF$Tumor_Sample_Barcode)
@@ -31,36 +30,60 @@ MAF$Protein_Change <- as.character(MAF$Protein_Change)
 #######################################################################################################
 
 MAF1 <- MAF
+
+# get rid of the unknwon gene s and the Sielnt mutations
 MAF1 <- MAF1[which(MAF1$Hugo_Symbol!="Unknown"),]
+MAF1 <- MAF1[which(MAF1$Variant_Classification!="Silent"),]
+gene <- unique(MAF1$Hugo_Symbol)
+samples <- unique(MAF1$Tumor_Sample_Barcode)
 
-MAF1$CHR_POS <- paste("chr",MAF1$Chromosome,":",MAF1$Start_Position,"-",MAF1$End_Position,sep="")
-MAF1$CODE <- as.character(MAF1$dbSNP_RS)
-MAF1$CODE[which(nchar(MAF1$CODE)==0)] <- "NA"
+j <- c()
 
-MAF1$MUTID <- paste(MAF1$Hugo_Symbol,MAF1$Protein_Change,sep="_")
-
-MAF1 <- MAF1[,c("MUTID","Tumor_Sample_Barcode","Hugo_Symbol","Variant_Classification","CHR_POS","Reference_Allele","Tumor_Seq_Allele1","cDNA_Change", "Protein_Change")]
+MAF1 <- MAF1[,c( "Tumor_Sample_Barcode","Hugo_Symbol","Protein_Change","Genome_Change")]
+MAF1$Change <- MAF1$Protein_Change
+MAF1$Change[which(MAF1$Protein_Change=="")] <- MAF1$Genome_Change[which(MAF1$Protein_Change=="")] 
+MAF1 <- MAF1[,-c(3,4)]
+which(colnames(MAF1) %in% c("Protein_Change","Genome_Change"))
+MAF1$MUTID <- paste(MAF1$Hugo_Symbol,MAF1$Change,sep="_")
 
 # create a bianry matrix full of zeros with colnames equal to the sampel names and rownames equal the MUTIDs
-
 MATMUT<-matrix(0,nrow=length(unique(MAF1$MUTID)),ncol=length(unique(MAF1$Tumor_Sample_Barcode)))
 colnames(MATMUT) <- unique(MAF1$Tumor_Sample_Barcode)
 rownames(MATMUT) <- unique(MAF1$MUTID)
 
 # assign 1 to any sample mutated for any MUTID
-for(i in rownames(MATMUT)){
-  MATMUT[i,c(MAF1$Tumor_Sample_Barcode[which(MAF1$MUTID==i)])] <- 1  
+for(i in rownames(MATMUT)){MATMUT[i,c(MAF1$Tumor_Sample_Barcode[which(MAF1$MUTID==i)])] <- 1}
+
+idx <- sapply(strsplit(x=rownames(MATMUT),split="_"), function(x){x[[1]]})
+gene <- unique(idx)
+j <- c()
+new.matmut <- matrix(0,nrow=length(gene),ncol=length(colnames(MATMUT)))
+rownames(new.matmut) <- gene
+colnames(new.matmut) <- colnames(MATMUT)
+ 
+for(i in rownames(new.matmut))
+  {
+if(length(which(idx==i))>1) 
+  {
+  new.matmut[i,c(names(which(apply(MATMUT[which(idx==i),],2,sum)!=0)))] <- 1 } 
+else 
+  {new.matmut[i,names(which(MATMUT[which(idx==i),]==1))] <- 1
 }
+}
+ 
+MATMUT_LUAD <- new.matmut
 
-foo <- MAF1[-which(duplicated(MAF1$MUTID)),c("MUTID","Variant_Classification")]
-rownames(foo) <- foo$MUTID
-foo$frequency <- apply(MATMUT,1,sum)
-MUT_TYPE <- foo[rownames(MATMUT),]
+# sanity check
+for(i in c(1:length(colnames(new.matmut))))
+{
+a <- rownames(new.matmut)[which(new.matmut[,i]==1)]
+b <- unique(MAF1$Hugo_Symbol[ MAF1$Tumor_Sample_Barcode ==colnames(new.matmut)[i]])
+print(table(is.na(match(b,a))))
+}
+    
 
-MATMUT_LUAD <- as.data.frame(MATMUT)
-MUT_TYPE_LUAD <- as.data.frame(MUT_TYPE)
-
-rm(foo,MAF,MAF1,i,MATMUT)
+save(file="/home/cferte/FELLOW/cferte/KRAS_Analysis/MATMUT_LUAD.RData",MATMUT_LUAD)
+rm(MAF,MAF1,i,MATMUT)
 
 #######################################################################################################
 # 2. save the objects MATMUT and MUT_TYPE in Belltown
@@ -68,18 +91,18 @@ rm(foo,MAF,MAF1,i,MATMUT)
 
 save(MUT_TYPE_LUAD,file="/home/cferte/FELLOW/cferte/KRAS_Analysis/MUT_TYPE_LUAD.RData")
 save(MATMUT_LUAD,file="/home/cferte/FELLOW/cferte/KRAS_Analysis/mutations_LUAD.RData")
+save(file="/home/cferte/FELLOW/cferte/KRAS_Analysis/MATMUT_LUAD.RData",MATMUT_LUAD)
 
-
-#######################################################################################################
-# 3. create KRAS_LUAD vector
-#######################################################################################################
-tmp <- MATMUT_LUAD[grep(pattern="KRAS", rownames(MATMUT_LUAD)),]
-rownames(tmp) <- substr(x=rownames(tmp),8,nchar(rownames(tmp)))
-tmp1 <- c()
-for(i in colnames(tmp)){
-tmp1 <- c(tmp1,ifelse(sum(tmp[,i])==0,"WT",rownames(tmp)[which(tmp[,i]==1)]))
-}
-names(tmp1) <- colnames(tmp)
-KRAS_LUAD <- tmp1
-save(KRAS_LUAD,file="/home/cferte/FELLOW/cferte/KRAS_Analysis/KRAS_LUAD.RData")
-
+# #######################################################################################################
+# # 3. create KRAS_LUAD vector
+# #######################################################################################################
+# tmp <- MATMUT_LUAD[grep(pattern="KRAS", rownames(MATMUT_LUAD)),]
+# rownames(tmp) <- substr(x=rownames(tmp),8,nchar(rownames(tmp)))
+# tmp1 <- c()
+# for(i in colnames(tmp)){
+# tmp1 <- c(tmp1,ifelse(sum(tmp[,i])==0,"WT",rownames(tmp)[which(tmp[,i]==1)]))
+# }
+# names(tmp1) <- colnames(tmp)
+# KRAS_LUAD <- tmp1
+# save(KRAS_LUAD,file="/home/cferte/FELLOW/cferte/KRAS_Analysis/KRAS_LUAD.RData")
+# 

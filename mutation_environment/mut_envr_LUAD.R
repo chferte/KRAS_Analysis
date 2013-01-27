@@ -14,56 +14,14 @@ synapseLogin("charles.ferte@sagebase.org","charles")
 options(stringsAsFactors=FALSE)
 
 #######################################################################################################
-# 1. read the RNASeq information file of TCGA LUAD normalized by Justin Guinney  and load the and see the intersect
+# 1. load the data files  of TCGA LUAD 
 #######################################################################################################
-
-source("/home/cferte/FELLOW/cferte/KRAS_Analysis/data_input/TCGA_LUAD_input.R")
-
-load("/home/cferte/FELLOW/cferte/KRAS_Analysis/MUT_TYPE_LUAD.RData")
 load("/home/cferte/FELLOW/cferte/KRAS_Analysis/mutations_LUAD.RData")
+load("/home/cferte/FELLOW/cferte/KRAS_Analysis/KRAS_LUAD.RData")
+table(KRAS_LUAD)
 
-# create the KRAS_LUAD vector
-tmp <- MATMUT_LUAD[grep(pattern="KRAS", rownames(MATMUT_LUAD)),]
-rownames(tmp) <- substr(x=rownames(tmp),8,nchar(rownames(tmp)))
-tmp1 <- c()
-for(i in colnames(tmp)){
-  tmp1 <- c(tmp1,ifelse(sum(tmp[,i])==0,"WT",rownames(tmp)[which(tmp[,i]==1)]))
-}
-names(tmp1) <- colnames(tmp)
-KRAS_LUAD <- tmp1
-rm(tmp,tmp1)
-
-# #######################################################################################################
-# # 2. create a KRAS_LUAD variable 
-# #######################################################################################################
-# 
-# G12C <- as.numeric(MATMUT_LUAD["KRAS_rs121913530_C_A_chr12:25398285-25398285",])
-# G12V <- as.numeric(MATMUT_LUAD["KRAS_rs121913529_C_A_chr12:25398284-25398284",])
-# G12D <- as.numeric(MATMUT_LUAD["KRAS_rs121913529_C_T_chr12:25398284-25398284",])
-# G13D <- as.numeric(MATMUT_LUAD["KRAS_rs112445441_C_T_chr12:25398281-25398281",])
-# tmp <- setdiff(c(rownames(MATMUT_LUAD)[grep("KRAS",rownames(MATMUT_LUAD))]),
-#                c("KRAS_rs121913530_C_A_chr12:25398285-25398285",     #G12C
-#                  "KRAS_rs121913529_C_A_chr12:25398284-25398284",     #G12V
-#                  "KRAS_rs121913529_C_T_chr12:25398284-25398284",     #G12D
-#                  "KRAS_rs112445441_C_T_chr12:25398281-25398281"))    #G13D
-# RARE <- as.numeric(apply(MATMUT_LUAD[tmp,],2,sum))
-# names(RARE) <- colnames(MATMUT_LUAD)
-# 
-# foo <- rbind(G12C,G12V)
-# foo <- rbind(foo,G12D)
-# foo <- rbind(foo,G13D)
-# foo <- rbind(foo,RARE)
-# rownames(foo) <- c("G12C","G12V","G12D","G13D","rare")
-# foo2 <- as.data.frame(t(foo))
-# WT <- ifelse(apply(foo2,1,sum)==0,1,0)
-# foo2$WT <- WT
-# KRAS_LUAD <- unlist(apply(foo2,1,function(x){colnames(foo2)[which(x==1)]}))
-# rm(G12C,G12D,G12V,G13D,foo,foo2,RARE,WT,tmp)
-# table(KRAS_LUAD)
-# save(file="/home/cferte/FELLOW/cferte/KRAS_Analysis/KRAS_LUAD.RData",KRAS_LUAD)
-# 
 # ###################################################################################################
-# # 3. plot the overall mutation rate in LUAD (y axis = mutations per megabase, x axis= samples )
+# 2. plot the overall mutation rate in LUAD (y axis = mutations per megabase, x axis= samples )
 # ###################################################################################################
 # 
 # MUTRATE <- apply(MATMUT_LUAD,2,sum)
@@ -86,7 +44,7 @@ rm(tmp,tmp1)
 # ###############################################################################################################################
 # # 3. compute the mutations that are associated (overlapping or exclusive) with KRAS mutations
 # ###############################################################################################################################
-# kras <- apply(MATMUT_LUAD[grep("KRAS",rownames(MATMUT_LUAD)),],2,sum)
+# kras <- apply(MATMUT_LUAD[which("KRAS"==rownames(MATMUT_LUAD)),],2,sum)
 # kras <- ifelse(kras==0,0,1)
 # kras.overlap <- apply(MATMUT_LUAD,1,function(x){ fisher.test(as.numeric(kras),as.numeric(x),alternative="greater")$p.value})
 # kras.exclusive <- apply(MATMUT_LUAD,1,function(x){ fisher.test(as.numeric(kras),as.numeric(x),alternative="less")$p.value})
@@ -240,10 +198,7 @@ rm(tmp,tmp1)
 # 8. compute the overlap between KRAS G12C and G12V mutations AND genes
 ###############################################################################################################################
 
-# load the MATMUT_GENE_LUAD (mutation matrix per gene)
-load("/home/cferte/FELLOW/cferte/KRAS_Analysis/KRAS_LUAD.RData")
-load(file="/home/cferte/FELLOW/cferte/KRAS_Analysis/MATMUT_GENE_LUAD.RData")
-new.matmut <- MATMUT_GENE_LUAD
+new.matmut <- MATMUT_LUAD
 
 j <- which(KRAS_LUAD %in% c("WT","G12C"))
 G12C<- ifelse(KRAS_LUAD[j]=="G12C",1,0)

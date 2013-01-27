@@ -52,15 +52,8 @@ res <- c(res,emp.pval)
 
 names(res) <- colnames(drug)
 res <- res[colnames(G12C_SENS)]
-tmp <- ifelse(res<.05,"red","grey60")
 
-boxplot(G12C_SENS,cex.axis=.7,las=2, ylab="spearman correlation (r)",col=tmp)
-abline(h=0,col="red",lty=2)
-title("Correlation of 100 KRAS G12C bootstrapped gene expression models 
-  with drug sensitivity in lung cancer cell lines (CCLE)",cex.main=.7)
-
-
-G12C_SENS_CCLE_COR <- rbind(G12C_SENS)
+G12C_SENS_CCLE_COR <- G12C_SENS
 G12C_SENS_CCLE_PVAL <- res
 
 
@@ -130,29 +123,8 @@ for(k in colnames(drug)){
 
 names(res) <- colnames(drug)
 res <- res[colnames(G12C_SENS)]
-tmp <- ifelse(res<.05,"red","grey60")
 
-boxplot(G12C_SENS,cex.axis=.7,las=2, ylab="spearman correlation (r)",col=tmp)
-abline(h=0,col="red",lty=2)
-title("Correlation of 100 KRAS G12C bootstrapped gene expression models 
-  with drug sensitivity in lung cancer cell lines (SANGER)",cex.main=.7)
-
-
-par(mfrow=c(1,1))
-# ### plot the top 10 positive correlations
-# boxplot(G12C_SENS[,1:15],col=tmp[1:15],cex.axis=.7,las=2,ylab="spearman correlation (r)")
-# abline(h=0,col="red",lty=2)
-# title("top 15 positive correlations G12C model with  
-#   with drug sensitivity (SANGER)",cex.main=.7)
-
-### plot the top 10 negative correlations
-boxplot(G12C_SENS[,90:138],col=tmp[90:138],cex.axis=.7,las=2,ylab="spearman correlation (r)")
-abline(h=0,col="red",lty=2)
-title("top 15 negative correlations G12C model with  
-  with drug sensitivity (SANGER)",cex.main=.7)
-
-
-G12C_SENS_SANGER_COR <- rbind(G12C_SENS)
+G12C_SENS_SANGER_COR <- G12C_SENS
 G12C_SENS_SANGER_PVAL <- res
 
 
@@ -172,8 +144,10 @@ plot(apply(G12C_SENS_SANGER_COR,2,mean)*-1, -log10(G12C_SENS_SANGER_PVAL),type="
      ylab="-log10(p)",xlab="spearman rho",xlim=c(-.5,.5))
 abline(h=-log10(P),lty=2,col="gray60")
 abline(v=c(-.5,.5),lty=2,col="gray60")
-legend(-0.2,1,legend=names(G12C_SENS_SANGER_PVAL)[sig.drugs],
+legend(-0.2,1.4,legend=names(G12C_SENS_SANGER_PVAL)[sig.drugs],
        pch=17,col=palette,cex=.8,xjust=.5)
+
+
 
 ###############################################################################
 # save the correlation objects
