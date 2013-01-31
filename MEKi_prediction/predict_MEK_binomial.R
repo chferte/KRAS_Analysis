@@ -197,7 +197,7 @@ title(main="univariate difefrential expression for sensitivity to MEKi across SA
 # ################################################################################################################
 # first load the ccle data
 # ################################################################################################################
-MAF1 <- read.delim("/home/cferte/CCLE_hybrid_capture1650_hg19_NoCommonSNPs_NoNeutralVariants_CDS_2012.05.07.maf",header=TRUE)
+MAF1 <- read.delim("/home/cferte/cell_line_data/CCLE_hybrid_capture1650_hg19_NoCommonSNPs_NoNeutralVariants_CDS_2012.05.07.maf",header=TRUE)
 MAF1 <- MAF1[which(MAF1$Hugo_Symbol!="Unknown"),]
 MAF1 <- MAF1[,c("Hugo_Symbol","Tumor_Sample_Barcode","Protein_Change", "Genome_Change")]
 MAF1 <- MAF1[(grep(pattern="LUNG",x=MAF1$Tumor_Sample_Barcode)),]
@@ -223,7 +223,7 @@ M2 <- M2[tmp,]
 M4 <- M4[tmp,]
 
 # second, load the mutation data from Sanger
-mutations.sanger <- read.csv("/home/cferte/FELLOW/cferte/Sanger_gdsc_mutation_w3.csv",header=TRUE)
+mutations.sanger <- read.csv("/home/cferte/cell_line_data/Sanger_gdsc_mutation_w3.csv",header=TRUE)
 rownames(mutations.sanger) <- toupper(gsub(pattern="-",replacement="",mutations.sanger$Cell.Line))
 mutations.sanger <- t(mutations.sanger[ grep(pattern="NSCLC",x=mutations.sanger$Tissue),])
 mutations.sanger[grep(pattern="na",x=mutations.sanger)] <- NA
@@ -354,10 +354,10 @@ tmp <- intersect(rownames(cnv.sanger),rownames(cnv.ccle))
 # restrict to KRAS mutant samples only 
 ################################
 
-KC <- colnames(kras.info.ccle)
-KS <- colnames(kras.info.sanger)
-#KC <- names(which(kras.info.ccle["KRAS0",]==1))
-#KS <- names(which(kras.info.sanger["KRAS0",]==1))
+#KC <- colnames(kras.info.ccle)
+#KS <- colnames(kras.info.sanger)
+KC <- names(which(kras.info.ccle["KRAS0",]==1))
+KS <- names(which(kras.info.sanger["KRAS0",]==1))
 
 ###################################################################################################################
 # GOLD standard: correlations between IC50 of CCLE and Sanger

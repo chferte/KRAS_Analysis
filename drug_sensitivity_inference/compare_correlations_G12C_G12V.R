@@ -227,9 +227,10 @@ for(i in drug.names){
 # plot the median spearman rho of G12C and G12V for the gamma secretase inhibitors that exhibit differential sensitivity between G12C and G12V
 drug.names <- sanger.drugs$DRUG.NAME[grep(pattern="ecretase",sanger.drugs$TARGET)]
 drug.names[drug.names=="Z.LLNle-CHO"] <- "Z.LLNle.CHO" 
-par(mfrow=c(2,2))
+drug.names <- drug.names[-1]
+par(mfrow=c(1,1))
 for(i in drug.names){
-  boxplot(data.frame(cbind(G12C=G12C_SENS_SANGER_COR[,i],G12V=G12V_SENS_SANGER_COR[,i])), main=paste(i), ylab="Spearman rho",sub=paste("P=",format(p.val[i],digits=2)),ylim=c(-.6,.6))
+  boxplot(data.frame(cbind(G12C=G12C_SENS_SANGER_COR[,i],G12V=G12V_SENS_SANGER_COR[,i])), main=paste(i), ylab="Spearman rho",sub=paste("P=",format(p.val[i],digits=2)),ylim=c(-.6,.2))
   stripchart(list(G12C=G12C_SENS_SANGER_COR[,i], G12V=G12V_SENS_SANGER_COR[,i]), add=T,vertical=TRUE,method="jitter",col="red",pch=20)
   abline(h=0,lty=2,lwd=.5)
 }
