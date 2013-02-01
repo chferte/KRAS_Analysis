@@ -79,7 +79,7 @@ for(i in c(1:dim(A)[1]))
 }
 par(mfrow=c(1,1))
 hist(rat,breaks=100, main="correlation between the gene expression data from Sanger & CCLE",ylab="genes (N)")
-tmp <- rownames(A)[which(rat>.6)]
+tmp <- rownames(A)[which(rat>.7)]
 SANGER_EXP <- SANGER_EXP[tmp,]
 CCLE_EXP <- CCLE_EXP[tmp,]
 rm(A,B,rat,tmp,raton)
@@ -193,7 +193,7 @@ table(fit$p.value[,2]<.05)
 fit <- eBayes(lmFit(CCLE_EXP[,MEK.cells.ccle],model.matrix(~mek.ic50.ccle[,2])))
 hist(fit$p.value[,2],breaks=100, main=paste("CCLE Expr ~",colnames(mek.ic50.ccle)[2]))
 table(fit$p.value[,2]<.05)
-title(main="univariate difefrential expression for sensitivity to MEKi across SANGER & CCLE",outer=TRUE)
+title(main="univariate differential expression for sensitivity to MEKi across SANGER & CCLE",outer=TRUE)
 
 
 # ################################################################################################################
@@ -393,16 +393,11 @@ title(main="univariate difefrential expression for sensitivity to MEKi across SA
 # train in sanger cells
 # validate each model in ccle
 ###################################################################################################################
-
-# # get rid of the non informative cell lines
-# tmp <- sapply(colnames(ic50.train),function(x){rownames(ic50.train)[which(ic50.train[,x]<quantile(ic50.train[,x],probs=.6) & ic50.train[,x]>quantile(ic50.train[,x],probs=.4))]})
-# tmp <- as.character(tmp)
-# trash <- which(rownames(ic50.train) %in% unique(tmp[duplicated(tmp)]))
-
-
-par(mfrow=c(1,1))
+ic50.train <- mek.ic50.sanger
+ic50.val <- mek.ic50.ccle
+par(mfrow=c(1,2))
 require(glmnet)
-N <- 30
+N <- 100
 fit <- c()
 selected <- c()
 yhat <- c()
@@ -416,7 +411,7 @@ while(models<N)
   table(j)
   #trainex <- SANGER_EXP[,j]
   trainex <- rbind(rbind(SANGER_EXP[,j],mutations.sanger[,j]),kras.info.sanger[,j])
-  vec.train <- apply(normalizeCyclicLoess(ic50.train[j,]),1,mean)
+  vec.train <- apply(ic50.train[j,],1,mean)
   cv.fit <- cv.glmnet(t(trainex), y=vec.train,nfolds=5, alpha=.01)
   fit <- glmnet(x=t(trainex),y=vec.train,alpha=.01,lambda=cv.fit$lambda.1se)
   if(length(which(abs(as.numeric(fit$beta))> 10^-5))>10)
@@ -436,7 +431,7 @@ while(models<N)
   } }
 
 rownames(selected) <- rownames(trainex)
-
+selected1 <- selected
 y <- c()
 for(i in c(1:length(yhat)))
 {
@@ -444,7 +439,7 @@ for(i in c(1:length(yhat)))
 }
 rownames(y) <- val
 
-boxplot(list(PD0325901=cor(y,ic50.val[,1],method="spearman"), AZD6244=cor(y,ic50.val[,2],method="spearman")),outline=FALSE,ylim=c(0,1))
+boxplot(list(PD0325901=cor(y,ic50.val[,1],method="spearman"), AZD6244=cor(y,ic50.val[,2],method="spearman")),outline=FALSE,ylim=c(0,1),cex.axis=.7)
 stripchart(list(PD0325901=cor(y,ic50.val[,1],method="spearman"), AZD6244=cor(y,ic50.val[,2],method="spearman")),method="jitter",vertical=TRUE,add=TRUE,col="royalblue",pch=20)
 tmp <- intersect(rownames(ic50.train),rownames(ic50.val))
 a <- cor(ic50.val[tmp,],apply(ic50.train[tmp,],1,mean),method="spearman")[1]
@@ -452,68 +447,70 @@ b <- cor(ic50.val[tmp,],apply(ic50.train[tmp,],1,mean),method="spearman")[2]
 stripchart(list(PD0325901=a, AZD6244=b),pch=20,cex=3,col="orange",add=TRUE,vertical=TRUE)
 abline(h=c(0,.2,.4,.6,.8,1),lty=2)
 
+
 ###################################################################################################################
 # train our predictive model of MEK response in ccle
 # using a penalized regression approach  
 # with alpha=.1 (more ridge) and determine lambda using nfolds= 5
 # the robustness of the model is increased by boostrapping (n=100)
-# validate each model in BATTLE
+# train in sanger cells
+# validate each model in ccle
 ###################################################################################################################
-
+ic50.train <- mek.ic50.ccle
+ic50.val <- mek.ic50.sanger
 require(glmnet)
-ccle.mean <- rank(M2[,1])
-sanger.mean <- M[,2]
-names(ccle.mean) <- rownames(M2)
-names(sanger.mean) <- rownames(M)
-
-N <- 20
+N <- 100
 fit <- c()
 selected <- c()
 yhat <- c()
 models <- 0
 i <- 0
-bal <- c()
-trainex <- c()
-validex <- c()
 while(models<N)
 {
-j <- sample(rownames(M2),replace=TRUE)
-trainex <- rbind(rbind(CCLE_EXP[,j],mutations.ccle[,j]),kras.info.ccle[,j])
-cv.fit <- cv.glmnet(t(trainex), y=ccle.mean[j], nfolds=3, alpha=.1)
-fit <- glmnet(x=t(trainex),y=ccle.mean[j],alpha=.1,lambda=cv.fit$lambda.1se,family="gaussian")
-if(length(which(abs(as.numeric(fit$beta))> 10^-5))>10)
+  dev <- c()
+  val <- c()
+  j <- sample(rownames(ic50.train),replace=TRUE)
+  table(j)
+  trainex <- rbind(rbind(CCLE_EXP[,j],mutations.ccle[,j]),kras.info.ccle[,j])
+  vec.train <- apply(ic50.train[j,],1,mean)
+  cv.fit <- cv.glmnet(t(trainex), y=vec.train,nfolds=5, alpha=.01)
+  fit <- glmnet(x=t(trainex),y=vec.train,alpha=.01,lambda=cv.fit$lambda.1se)
+  if(length(which(abs(as.numeric(fit$beta))> 10^-5))>10)
+  {
+    i=i+1
+    print(i)
+    selected <- cbind(selected , as.numeric(fit$beta))
+    
+    dev <- which(rownames(ic50.val) %in% intersect(j,rownames(ic50.val)))
+    val <- rownames(ic50.val)
+    #val <- rownames(ic50.val)[-dev]
+    #intersect(j,val)
+    #validex <- CCLE_EXP[,val]
+    validex <- rbind(rbind(SANGER_EXP[,val],mutations.sanger[,val]),kras.info.sanger[,val])
+    yhat <- c(yhat,list(predict(fit, t(validex))))
+    models <- length(yhat)
+  } }
+
+rownames(selected) <- rownames(trainex)
+selected2 <- selected
+y <- c()
+for(i in c(1:length(yhat)))
 {
-i=i+1
-print(i)
-selected <- cbind(selected , as.numeric(fit$beta))
-
-dev <- which(rownames(M) %in% intersect(j,rownames(M)))
-
-val <- rownames(M)[-dev]
-validex <- rbind(rbind(SANGER_EXP[,val],mutations.sanger[,val]),kras.info.sanger[,val])
-yhat <- c(yhat,list(predict(fit, t(validex),type="link")))
-models <- length(yhat)
-} }
-
-# assess and plot the performance
-length(yhat)
-yhat[[4]]
-
-colnames(M)
-COR_AZD6244 <- c()
-for (i in c(1:N)){
-COR_AZD6244 <- c(COR_AZD6244,cor(as.numeric(yhat[[i]]),rank(as.numeric(M[rownames(yhat[[i]]),4])),method="spearman"))
+  y <- cbind(y, yhat[[i]])
 }
+rownames(y) <- val
 
-# COR_CI.1040 <- c()
-# for (i in c(1:N)){
-#   COR_CI.1040 <- c(COR_CI.1040,cor(as.numeric(yhat[[i]]),as.numeric(M[rownames(yhat[[i]]),2]),method="spearman"))
-# }
+boxplot(list(RDEA119=cor(y,ic50.val[,1],method="spearman"),CI.1040=cor(y,ic50.val[,2],method="spearman"), PD0325901=cor(y,ic50.val[,3],method="spearman"), AZD6244=cor(y,ic50.val[,4],method="spearman")),outline=FALSE,ylim=c(0,1),cex.axis=.7)
+stripchart(list(RDEA119=cor(y,ic50.val[,1],method="spearman"),CI.1040=cor(y,ic50.val[,2],method="spearman"), PD0325901=cor(y,ic50.val[,3],method="spearman"), AZD6244=cor(y,ic50.val[,4],method="spearman")),method="jitter",vertical=TRUE,add=TRUE,col="royalblue",pch=20)
+tmp <- intersect(rownames(ic50.train),rownames(ic50.val))
+a <- cor(ic50.val[tmp,],apply(ic50.train[tmp,],1,mean),method="spearman")[1]
+b <- cor(ic50.val[tmp,],apply(ic50.train[tmp,],1,mean),method="spearman")[2]
+c <- cor(ic50.val[tmp,],apply(ic50.train[tmp,],1,mean),method="spearman")[3]
+d <- cor(ic50.val[tmp,],apply(ic50.train[tmp,],1,mean),method="spearman")[4]
+stripchart(list(RDEA119=a,CI.1040=b,PD0325901=c, AZD6244=d),pch=20,cex=3,col="orange",add=TRUE,vertical=TRUE)
+abline(h=c(0,.2,.4,.6,.8,1),lty=2)
 
-boxplot(COR_AZD6244)
-
-
-
+#######################################################################
 
 # extract the biological meaning
 rownames(selected) <- rownames(fit$beta)
