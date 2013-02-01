@@ -290,6 +290,10 @@ mutations.ccle <- tmp
 rm(tmp)
 rownames(mutations.sanger) <- paste(rownames(mutations.sanger),"_mut",sep="")
 
+
+# get rid of "KRAS_mut"
+mutations.sanger <- mutations.sanger[-which(rownames(mutations.sanger)=="KRAS_mut"),]
+mutations.ccle <- mutations.ccle[-which(rownames(mutations.ccle)=="KRAS_mut"),]
 ################################
 # restrict to KRAS mutant samples only 
 ################################
@@ -382,22 +386,18 @@ hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(ic50.val)[2
 table(fit$p.value[,2]<.05)
 title(main="univariate difefrential expression for sensitivity to MEKi across SANGER & CCLE",outer=TRUE)
 
-
-
-
 ###################################################################################################################
-# train our predictive model of MEK response in ccle
+# train our predictive model of MEK response in sanger
 # using a penalized regression approach  
 # with alpha=.1 (more ridge) and determine lambda using nfolds= 5
 # the robustness of the model is increased by boostrapping (n=100)
-# train in sanger cells
 # validate each model in ccle
 ###################################################################################################################
 ic50.train <- mek.ic50.sanger
 ic50.val <- mek.ic50.ccle
 par(mfrow=c(1,2))
 require(glmnet)
-N <- 100
+N <- 300
 fit <- c()
 selected <- c()
 yhat <- c()
@@ -411,9 +411,9 @@ while(models<N)
   table(j)
   #trainex <- SANGER_EXP[,j]
   trainex <- rbind(rbind(SANGER_EXP[,j],mutations.sanger[,j]),kras.info.sanger[,j])
-  vec.train <- apply(ic50.train[j,],1,mean)
-  cv.fit <- cv.glmnet(t(trainex), y=vec.train,nfolds=5, alpha=.01)
-  fit <- glmnet(x=t(trainex),y=vec.train,alpha=.01,lambda=cv.fit$lambda.1se)
+  vec.train <- apply(ic50.train[j,c(3,4)],1,mean)
+  cv.fit <- cv.glmnet(t(trainex), y=vec.train,nfolds=5, alpha=.5)
+  fit <- glmnet(x=t(trainex),y=vec.train,alpha=.5,lambda=cv.fit$lambda.1se)
   if(length(which(abs(as.numeric(fit$beta))> 10^-5))>10)
   {
     i=i+1
@@ -453,13 +453,12 @@ abline(h=c(0,.2,.4,.6,.8,1),lty=2)
 # using a penalized regression approach  
 # with alpha=.1 (more ridge) and determine lambda using nfolds= 5
 # the robustness of the model is increased by boostrapping (n=100)
-# train in sanger cells
-# validate each model in ccle
+# validate each model in sanger
 ###################################################################################################################
 ic50.train <- mek.ic50.ccle
 ic50.val <- mek.ic50.sanger
 require(glmnet)
-N <- 100
+N <- 300
 fit <- c()
 selected <- c()
 yhat <- c()
@@ -473,8 +472,8 @@ while(models<N)
   table(j)
   trainex <- rbind(rbind(CCLE_EXP[,j],mutations.ccle[,j]),kras.info.ccle[,j])
   vec.train <- apply(ic50.train[j,],1,mean)
-  cv.fit <- cv.glmnet(t(trainex), y=vec.train,nfolds=5, alpha=.01)
-  fit <- glmnet(x=t(trainex),y=vec.train,alpha=.01,lambda=cv.fit$lambda.1se)
+  cv.fit <- cv.glmnet(t(trainex), y=vec.train,nfolds=5, alpha=.5)
+  fit <- glmnet(x=t(trainex),y=vec.train,alpha=.5,lambda=cv.fit$lambda.1se)
   if(length(which(abs(as.numeric(fit$beta))> 10^-5))>10)
   {
     i=i+1
@@ -513,87 +512,14 @@ abline(h=c(0,.2,.4,.6,.8,1),lty=2)
 #######################################################################
 
 # extract the biological meaning
-rownames(selected) <- rownames(fit$beta)
-mus <- selected
-mus[mus!=0] <- 1
-#plot(density(apply(mus,2,sum)))
-rownames(selected)[which(apply(mus,1,sum)>quantile(apply(mus,1,sum),probs=.99))]
-sort(apply(mus,1,sum),decreasing=TRUE)[1:100]
+mus1 <- selected1
+mus1[mus1!=0] <- 1
+x <- rownames(selected1)[which(apply(mus1,1,sum)>quantile(apply(mus1,1,sum),probs=.9))]
+sort(apply(mus1,1,sum),decreasing=TRUE)[1:50]
 
+mus2 <- selected2
+mus2[mus2!=0] <- 1
+y <- rownames(selected2)[which(apply(mus2,1,sum)>quantile(apply(mus2,1,sum),probs=.9))]
+sort(apply(mus2,1,sum),decreasing=TRUE)[1:50]
 
-
-
-###################################################################################################################
-# train our predictive model of MEK response in sanger
-# using a penalized regression approach  
-# with alpha=.1 (more ridge) and determine lambda using nfolds= 5
-# the robustness of the model is increased by boostrapping (n=100)
-# validate each model in BATTLE
-###################################################################################################################
-
-
-require(glmnet)
-sanger.top <- ifelse(apply(M3[KS,-1],1,sum)>2,1,0)
-#ccle.top <- M3[,4]
-names(sanger.top) <- rownames(M3[KS,])
-
-N <- 30
-fit <- c()
-selected <- c()
-yhat <- c()
-models <- 0
-i <- 0
-bal <- c()
-
-while(models<N)
-{
-  j <- c(names(which(sanger.top==1)),sample(names(which(sanger.top==0)),replace=TRUE))
-  
-  cv.fit <- cv.glmnet(t(rbind(rbind(SANGER_EXP[,j],mutations.sanger[,j]),kras.info.sanger[,j])), y=sanger.top[j], nfolds=3, alpha=.1)
-  fit <- glmnet(x=t(rbind(rbind(SANGER_EXP[,j],mutations.sanger[,j]),kras.info.sanger[,j])),y=sanger.top[j],alpha=.1,lambda=cv.fit$lambda.1se,family="binomial")
-  if(length(which(abs(as.numeric(fit$beta))> 10^-5))>10)
-  {
-    i=i+1
-    print(i)
-    selected <- cbind(selected , as.numeric(fit$beta))
-    
-    
-    dev <- which(rownames(M4[KC,]) %in% intersect(j,rownames(M4[KC,])))
-    val <- rownames(M4[KC,])[-dev]
-    yhat <- c(yhat,list(predict(fit, t(rbind(rbind(CCLE_EXP[,val],mutations.ccle[,val]),kras.info.ccle[,val])),type="response")))
-    models <- length(yhat)
-  } }
-
-# assess and plot the performance
-require(ROCR)
-
-AUC_PD.0325901 <- c()
-for (i in c(1:N)){
-  Pred <- prediction(as.numeric(yhat[[i]]),as.numeric(M4[rownames(yhat[[i]]),1]))
-  Perf <- performance(prediction.obj=Pred,"tpr","fpr")
-  AUC <- performance(prediction.obj=Pred,"auc")
-  AUC_PD.0325901 <- c(AUC_PD.0325901,as.numeric(AUC@y.values))
-}
-
-AUC_AZD6244 <- c()
-for (i in c(1:N)){
-  Pred <- prediction(as.numeric(yhat[[i]]),as.numeric(M4[rownames(yhat[[i]]),2]))
-  Perf <- performance(prediction.obj=Pred,"tpr","fpr")
-  AUC <- performance(prediction.obj=Pred,"auc")
-  AUC_AZD6244 <- c(AUC_AZD6244,as.numeric(AUC@y.values))
-}
-
-boxplot(cbind(AUC_PD.0325901,AUC_AZD6244),outline=FALSE,ylab="prediction of sensitivity (AUC)",ylim=c(0.3,.9))
-stripchart(list(PD.0325901=AUC_PD.0325901,AZD6244=AUC_AZD6244),add=TRUE,method="jitter",vertical=TRUE,col="royalblue",pch=20)
-title( main=" bootstrapped elasticnet models of gene expression + hybrid capture sequencing
-trained in 68 ccle treated by PD.0325901 or AZD6244
-       validation in 35 cell lines processed by the Sanger group",outer=TRUE)
-
-# extract the biological meaning
-rownames(selected) <- rownames(fit$beta)
-mus <- selected
-mus[mus!=0] <- 1
-#plot(density(apply(mus,2,sum)))
-rownames(selected)[which(apply(mus,1,sum)>quantile(apply(mus,1,sum),probs=.99))]
-sort(apply(mus,1,sum),decreasing=TRUE)[1:50]
-
+intersect(x,y)
