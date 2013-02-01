@@ -15,6 +15,7 @@ library(limma)
 library(caret)
 library(glmnet)
 library(snm)
+library(synapseClient)
 source("/home/cferte/FELLOW/cferte/KRAS_Project/JUSTIN_PREDICT_CCLE/code/lung_analysis_functions.R")
 synapseLogin("charles.ferte@sagebase.org","charles")
 
@@ -56,6 +57,8 @@ tmp <- intersect(rownames(CCLE_EXP),rownames(SANGER_EXP))
 SANGER_EXP <- SANGER_EXP[tmp,]
 CCLE_EXP <- CCLE_EXP[tmp,]
 
+
+
 #####################################################################################
 # restrict to the probes that are highly correlated between sanger ccle
 #####################################################################################
@@ -82,6 +85,18 @@ CCLE_EXP <- CCLE_EXP[tmp,]
 rm(A,B,rat,tmp,raton)
 
 #####################################################################################
+# get rid of the probes that are the less variant
+#####################################################################################
+
+tmp <- apply(CCLE_EXP,1,sd)
+plot(density(tmp))
+hist(tmp)
+tmp1 <- which(tmp>quantile(tmp,probs=.1))
+CCLE_EXP <- CCLE_EXP[tmp1,]
+SANGER_EXP <- SANGER_EXP[tmp1,]
+rm(tmp1,tmp)
+
+#####################################################################################
 # rescale the gene expression data so the ccle and sanger gene expression are comparable
 #####################################################################################
 
@@ -97,15 +112,6 @@ normalize_to_X <- function(mean.x, sd.x, Y){
 
 SANGER_EXP <- normalize_to_X(rowMeans(CCLE_EXP),apply(CCLE_EXP,1,sd),SANGER_EXP)
 
-#####################################################################################
-# get rid of the probes that are the less variant
-#####################################################################################
-
-tmp <- apply(CCLE_EXP,1,sd)
-tmp1 <- which(tmp>quantile(tmp,probs=.2))
-CCLE_EXP <- CCLE_EXP[tmp1,]
-SANGER_EXP <- SANGER_EXP[tmp1,]
-rm(tmp1,tmp)
 
 #############################################################################
 # focus on the MEK inhibitors
@@ -119,7 +125,7 @@ sanger.drugs$DRUG.NAME <- sub(pattern="-",replacement=".",x=sanger.drugs$DRUG.NA
 
 MEK.ccle <-   ccle.drugs$Compound..code.or.generic.name.[grep(pattern="MEK",ccle.drugs$Target.s.)]
 MEK.sanger <- sanger.drugs$DRUG.NAME[grep(pattern="MEK",sanger.drugs$TARGET)]
-rm(sanger.drugs,ccle.drugs)
+#rm(sanger.drugs,ccle.drugs)
 
 # plot the distribution of the IC50 of the MEKi drugs
 par(mfrow=c(2,3), oma=c(1,1,5,1))
@@ -143,49 +149,49 @@ plot(x,main=paste(MEK.ccle[2]),ylab="IC50",pch=20,col="gray60")
 abline(h=quantile(x,probs=.2,na.rm=TRUE),col="red")
 title(main= "distribution of the IC50 across the MEK inhibitors in SANGER & CCLE db",outer=TRUE)
 
-# identify the cells that are evaluated for MEK inhibitors in sanger
+# identify the cell lines that are evaluated for MEK inhibitors in Sanger and in CCLE, and produce matrices of IC50
 MEK.cells.sanger <- rownames(SangerDrug)[-unique(c(which(is.na(SangerDrug[,MEK.sanger[1]])), which(is.na(SangerDrug[,MEK.sanger[2]])), which(is.na(SangerDrug[,MEK.sanger[3]])), which(is.na(SangerDrug[,MEK.sanger[4]]))))]
-M <- SangerDrug[MEK.cells.sanger,MEK.sanger]
+mek.ic50.sanger <- SangerDrug[MEK.cells.sanger,MEK.sanger]
 MEK.cells.ccle <- rownames(ccle_drug)[-unique(c(which(is.na(ccle_drug[,MEK.ccle[1]])), which(is.na(ccle_drug[,MEK.ccle[2]]))))]
-M2 <- ccle_drug[MEK.cells.ccle,MEK.ccle]
+mek.ic50.ccle <- ccle_drug[MEK.cells.ccle,MEK.ccle]
 
-rownames(M)
-rownames(M2)
+rownames(mek.ic50.sanger)
+rownames(mek.ic50.ccle)
 
+
+# correlation between mek inhib of sanger and ccle
 require(car)
-scatterplotMatrix(M,main="correlations in the IC50 of the MEK inhibitors in Sanger")
-scatterplotMatrix(normalizeCyclicLoess(M),main="correlations in the IC50 of the MEK inhibitors in Sanger (Loess normalized)")
-cor(M,method="spearman",use="pairwise.complete.obs")
-cor(normalizeCyclicLoess(M),method="spearman",use="pairwise.complete.obs")
+scatterplotMatrix(mek.ic50.sanger,main="correlations in the IC50 of the MEK inhibitors in Sanger")
+scatterplotMatrix(normalizeCyclicLoess(mek.ic50.sanger),main="correlations in the IC50 of the MEK inhibitors in Sanger (Loess normalized)")
+cor(mek.ic50.sanger,method="spearman",use="pairwise.complete.obs")
+cor(normalizeCyclicLoess(mek.ic50.sanger),method="spearman",use="pairwise.complete.obs")
 
-scatterplotMatrix(normalizeCyclicLoess(M2),main="correlations in the IC50 of the MEK inhibitors in ccle (Loess normalized)")
-cor(normalizeCyclicLoess(M2),method="spearman",use="pairwise.complete.obs")
+scatterplotMatrix(normalizeCyclicLoess(mek.ic50.ccle),main="correlations in the IC50 of the MEK inhibitors in ccle (Loess normalized)")
+cor(normalizeCyclicLoess(mek.ic50.ccle),method="spearman",use="pairwise.complete.obs")
 
-
-# binomial transformation of the independant variables
-#M3 <- apply(M,2,function(y){ifelse(y<quantile(y,probs=.2),1,0)})
-#M4 <- apply(M2,2,function(y){ifelse(y<quantile(y,probs=.2),1,0)})
+tmp <- intersect(rownames(mek.ic50.ccle),rownames(mek.ic50.sanger))
+cor(mek.ic50.sanger[tmp,],mek.ic50.ccle[tmp,],method="spearman",use="pairwise.complete.obs")
 
 
 # is there any signal in the differential expression
 par(mfrow=c(2,3))
-fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~M[,1])))
-hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(M)[1]))
+fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~mek.ic50.sanger[,1])))
+hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(mek.ic50.sanger)[1]))
 table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~M[,2])))
-hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(M)[2]))
+fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~mek.ic50.sanger[,2])))
+hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(mek.ic50.sanger)[2]))
 table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~M[,3])))
-hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(M)[3]))
+fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~mek.ic50.sanger[,3])))
+hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(mek.ic50.sanger)[3]))
 table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~M[,4])))
-hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(M)[4]))
+fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~mek.ic50.sanger[,4])))
+hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(mek.ic50.sanger)[4]))
 table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(CCLE_EXP[,MEK.cells.ccle],model.matrix(~M2[,1])))
-hist(fit$p.value[,2],breaks=100, main=paste("ccle Expr ~",colnames(M2)[1]))
+fit <- eBayes(lmFit(CCLE_EXP[,MEK.cells.ccle],model.matrix(~mek.ic50.ccle[,1])))
+hist(fit$p.value[,2],breaks=100, main=paste("CCLE Expr ~",colnames(mek.ic50.ccle)[1]))
 table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(CCLE_EXP[,MEK.cells.ccle],model.matrix(~M2[,2])))
-hist(fit$p.value[,2],breaks=100, main=paste("ccle Expr ~",colnames(M2)[2]))
+fit <- eBayes(lmFit(CCLE_EXP[,MEK.cells.ccle],model.matrix(~mek.ic50.ccle[,2])))
+hist(fit$p.value[,2],breaks=100, main=paste("CCLE Expr ~",colnames(mek.ic50.ccle)[2]))
 table(fit$p.value[,2]<.05)
 title(main="univariate difefrential expression for sensitivity to MEKi across SANGER & CCLE",outer=TRUE)
 
@@ -217,9 +223,9 @@ mutations.ccle <- MATMUT
 rm(MAF1,MATMUT)
 
 # make the names of the samples coherents for ccle
-tmp <- intersect(rownames(M2),colnames(mutations.ccle))
+tmp <- intersect(rownames(mek.ic50.ccle),colnames(mutations.ccle))
 mutations.ccle <- mutations.ccle[,tmp]
-M2 <- M2[tmp,]
+mek.ic50.ccle <- mek.ic50.ccle[tmp,]
 
 # second, load the mutation data from Sanger
 mutations.sanger <- read.csv("/home/cferte/cell_line_data/Sanger_gdsc_mutation_w3.csv",header=TRUE)
@@ -234,9 +240,9 @@ mutations.ccle <- mutations.ccle[tmp,]
 mutations.sanger <- mutations.sanger[tmp,]
 
 # make the names of the samples coherents for sanger
-tmp <- intersect(rownames(M),colnames(mutations.sanger))
+tmp <- intersect(rownames(mek.ic50.sanger),colnames(mutations.sanger))
 mutations.sanger <- mutations.sanger[,tmp]
-M <- M[tmp,]
+mek.ic50.sanger <- mek.ic50.sanger[tmp,]
 
 # get rid of the NA's in Sanger mutations matrix
 KRAS_SANGER <- mutations.sanger["KRAS",]
@@ -259,16 +265,6 @@ rm(tmp)
 # create the KRAS_CCLE
 KRAS_CCLE <- as.character(mutations.ccle["KRAS",])
 names(KRAS_CCLE) <- colnames(mutations.ccle)
-table(KRAS_CCLE)
-table(KRAS_SANGER)
-
-# attempt to sumarize the mutation information
-# KRAS_CCLE[KRAS_CCLE %in% c("p.Q61H","p.Q61K","p.Q61L")] <- "p.Q61" 
-# KRAS_SANGER[KRAS_SANGER %in% c("p.Q61H","p.Q61K","p.Q61L")] <- "p.Q61" 
-# KRAS_CCLE[KRAS_CCLE %in% c("p.G13C","p.G13D")] <- "p.G13" 
-# KRAS_SANGER[KRAS_SANGER %in% c("p.G13C","p.G13D")] <- "p.G13" 
-# KRAS_SANGER[KRAS_SANGER %in% c("p.G12S","p.G12F","p.G12D","p.G12A")] <- "rare" 
-# KRAS_CCLE[KRAS_CCLE %in% c("p.G12S","p.G12F","p.G12D","p.G12A")] <- "rare" 
 
 # set KRAS_CCLE and KRAS_SANGER to be a factor with same levels across ccle and sanger
 theseLevels  <- unique(c(KRAS_CCLE, KRAS_SANGER))
@@ -276,7 +272,8 @@ table(KRAS_CCLE)
 table(KRAS_SANGER)
 KRAS_CCLE <- factor(KRAS_CCLE, levels=theseLevels)
 KRAS_SANGER <- factor(KRAS_SANGER,levels=theseLevels)
-
+table(KRAS_CCLE)
+table(KRAS_SANGER)
 kras.info.ccle <- t(model.matrix(~ -1 + KRAS_CCLE))
 rownames(kras.info.ccle) <- sub(pattern="_CCLE",replacement= "", x=rownames(kras.info.ccle), fixed=T)
 colnames(kras.info.ccle) <- names(KRAS_CCLE)
@@ -293,93 +290,119 @@ mutations.ccle <- tmp
 rm(tmp)
 rownames(mutations.sanger) <- paste(rownames(mutations.sanger),"_mut",sep="")
 
-# ###################################################################################################################
-# # imput the cnv data
-# ###################################################################################################################
-# cnv.ccle <- read.delim("/home/cferte/CCLE_copynumber_byGene_2012-09-29.txt",header=TRUE)
-# CNV1 <- cnv.ccle
-# cnv.ccle <- cnv.ccle[,grep(pattern="LUNG",colnames(cnv.ccle))]
-# rownames(cnv.ccle) <- CNV1$geneName
-# colnames(cnv.ccle) <- sub(pattern="_LUNG",replacement="",x=colnames(cnv.ccle))
-# cnv.ccle <- cnv.ccle[,rownames(M4)]
-# 
-# cnv.sanger <- read.delim("/external-data/DAT_032__Sanger_Cell_Lines/CNV/Sanger800_copy_number_by_gene.txt",header=TRUE,na.strings = c("NA"," ","NaN"))
-# cnv.sanger <- loadEntity('syn464292')
-# 
-# cnv.sanger <- cnv.sanger$objects$eset
-# sampleNames(cnv.sanger)
-# featureNames(cnv.sanger)
-# rownames(cnv.sanger) <- cnv.sanger$Gene.Symb
-# tmp <- sapply(strsplit(x=colnames(cnv.sanger),split="_"),function(x){x[[1]]})
-# tmp <- toupper(x=tmp)
-# tmp <- gsub(pattern=".",replacement="",x=tmp,fixed = TRUE)
-# colnames(cnv.sanger) <- tmp
-# tmp <- intersect(rownames(M3),colnames(cnv.sanger))
-# cnv.sanger <- cnv.sanger[,tmp]
-# M3 <- M3[tmp,]
-# 
-# # get rid of the Nas in cnv.sanger
-# # pblm here
-# x <- 1
-# tmp <- apply(cnv.sanger,2,function(x){rownames(cnv.sanger)[which(is.na(x))]})
-# tmp <- unique(unlist(tmp))
-# cnv.sanger <- cnv.sanger[tmp,]
-# table(is.na(cnv.sanger))
-# 
-# # rescale the cnv data so the ccle and sanger cnv are comparable
-# #####################################################################################
-# 
-# # rescale the data (chemores) to have the same mean and variance than the LUAD
-# # Justin's function to rescale the VS to get the same mean/var than the TS
-# normalize_to_X <- function(mean.x, sd.x, Y){
-#   m.y <- rowMeans(Y)
-#   sd.y <- apply(Y, 1, sd)
-#   Y.adj <- (Y - m.y) * sd.x / sd.y  + mean.x 
-#   Y.adj[sd.y == 0] <- mean.x[sd.y==0]
-#   Y.adj
-# }
-# 
-# 
-# cnv.sanger <- normalize_to_X(rowMeans(cnv.ccle),apply(cnv.ccle,1,sd),cnv.sanger)
-# 
-# 
-# tmp <- intersect(rownames(cnv.sanger),rownames(cnv.ccle))
-# 
-# 
-
-
 ################################
 # restrict to KRAS mutant samples only 
 ################################
 
-KC <- colnames(kras.info.ccle)
-KS <- colnames(kras.info.sanger)
-#KC <- names(which(kras.info.ccle["KRAS0",]==1))
-#KS <- names(which(kras.info.sanger["KRAS0",]==1))
+KC <- names(which(kras.info.ccle["KRAS0",]==1))
+KS <- names(which(kras.info.sanger["KRAS0",]==1))
+
+################################################################################################################
+# is there any signal in the differential expression
+################################################################################################################
+
+par(mfrow=c(2,3))
+fit <- eBayes(lmFit(SANGER_EXP[,rownames(mek.ic50.sanger)],model.matrix(~mek.ic50.sanger[,1])))
+hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(mek.ic50.sanger)[1]))
+table(fit$p.value[,2]<.05)
+fit <- eBayes(lmFit(SANGER_EXP[,rownames(mek.ic50.sanger)],model.matrix(~mek.ic50.sanger[,2])))
+hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(mek.ic50.sanger)[2]))
+table(fit$p.value[,2]<.05)
+fit <- eBayes(lmFit(SANGER_EXP[,rownames(mek.ic50.sanger)],model.matrix(~mek.ic50.sanger[,3])))
+hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(mek.ic50.sanger)[3]))
+table(fit$p.value[,2]<.05)
+fit <- eBayes(lmFit(SANGER_EXP[,rownames(mek.ic50.sanger)],model.matrix(~mek.ic50.sanger[,4])))
+hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(mek.ic50.sanger)[4]))
+table(fit$p.value[,2]<.05)
+fit <- eBayes(lmFit(CCLE_EXP[,rownames(mek.ic50.ccle)],model.matrix(~mek.ic50.ccle[,1])))
+hist(fit$p.value[,2],breaks=100, main=paste("CCLE Expr ~",colnames(mek.ic50.ccle)[1]))
+table(fit$p.value[,2]<.05)
+fit <- eBayes(lmFit(CCLE_EXP[,rownames(mek.ic50.ccle)],model.matrix(~mek.ic50.ccle[,2])))
+hist(fit$p.value[,2],breaks=100, main=paste("CCLE Expr ~",colnames(mek.ic50.ccle)[2]))
+table(fit$p.value[,2]<.05)
+title(main="univariate difefrential expression for sensitivity to MEKi across SANGER & CCLE",outer=TRUE)
+
+
+
+################################################################################################################
+# is there any signal in the mutation
+################################################################################################################
+
+par(mfrow=c(2,3))
+fit <- eBayes(lmFit(mutations.sanger[,rownames(mek.ic50.sanger)],model.matrix(~mek.ic50.sanger[,1])))
+hist(fit$p.value[,2], main=paste("Sanger Expr ~",colnames(mek.ic50.sanger)[1]))
+table(fit$p.value[,2]<.05)
+fit <- eBayes(lmFit(mutations.sanger[,rownames(mek.ic50.sanger)],model.matrix(~mek.ic50.sanger[,2])))
+hist(fit$p.value[,2], main=paste("Sanger Expr ~",colnames(mek.ic50.sanger)[2]))
+table(fit$p.value[,2]<.05)
+fit <- eBayes(lmFit(mutations.sanger[,rownames(mek.ic50.sanger)],model.matrix(~mek.ic50.sanger[,3])))
+hist(fit$p.value[,2], main=paste("Sanger Expr ~",colnames(mek.ic50.sanger)[3]))
+table(fit$p.value[,2]<.05)
+fit <- eBayes(lmFit(mutations.sanger[,rownames(mek.ic50.sanger)],model.matrix(~mek.ic50.sanger[,4])))
+hist(fit$p.value[,2], main=paste("Sanger Expr ~",colnames(mek.ic50.sanger)[4]))
+table(fit$p.value[,2]<.05)
+fit <- eBayes(lmFit(mutations.ccle[,rownames(mek.ic50.ccle)],model.matrix(~mek.ic50.ccle[,1])))
+hist(fit$p.value[,2], main=paste("CCLE Expr ~",colnames(mek.ic50.ccle)[1]))
+table(fit$p.value[,2]<.05)
+fit <- eBayes(lmFit(mutations.ccle[,rownames(mek.ic50.ccle)],model.matrix(~mek.ic50.ccle[,2])))
+hist(fit$p.value[,2], main=paste("CCLE Expr ~",colnames(mek.ic50.ccle)[2]))
+table(fit$p.value[,2]<.05)
+title(main="univariate mutational association for sensitivity to MEKi across SANGER & CCLE",outer=TRUE)
+
 
 ###################################################################################################################
 # GOLD standard: correlations between IC50 of CCLE and Sanger
 ###################################################################################################################
+tmp <- intersect(rownames(mek.ic50.ccle),rownames(mek.ic50.sanger))
+cor(mek.ic50.ccle[tmp,],mek.ic50.sanger[tmp,],method="spearman")
+scatterplotMatrix(normalizeCyclicLoess(cbind(mek.ic50.ccle[tmp,],mek.ic50.sanger[tmp,])))
 
-cor(M[tmp,-1],M2[tmp,],method="spearman")
-scatterplotMatrix(normalizeCyclicLoess(cbind(M[tmp,-1],M2[tmp,])))
-title(main="correlations in the IC50 of the MEK inhibitors 
-between CCLE & Sanger (Loess normalized)", outer=TRUE)
+ic50.train <- mek.ic50.sanger
+ic50.val <- mek.ic50.ccle
 
-par(mfrow=c(1,2))
+# is there any signal in the differential expression
+par(mfrow=c(2,3))
+fit <- eBayes(lmFit(SANGER_EXP[,rownames(ic50.train)],model.matrix(~ic50.train[,1])))
+hist(fit$p.value[,2],breaks=100, main=paste("ccle Expr ~",colnames(ic50.train)[1]))
+table(fit$p.value[,2]<.05)
+fit <- eBayes(lmFit(SANGER_EXP[,rownames(ic50.train)],model.matrix(~ic50.train[,2])))
+hist(fit$p.value[,2],breaks=100, main=paste("ccle Expr ~",colnames(ic50.train)[2]))
+table(fit$p.value[,2]<.05)
+fit <- eBayes(lmFit(SANGER_EXP[,rownames(ic50.train)],model.matrix(~ic50.train[,3])))
+hist(fit$p.value[,2],breaks=100, main=paste("ccle Expr ~",colnames(ic50.train)[3]))
+table(fit$p.value[,2]<.05)
+fit <- eBayes(lmFit(SANGER_EXP[,rownames(ic50.train)],model.matrix(~ic50.train[,4])))
+hist(fit$p.value[,2],breaks=100, main=paste("ccle Expr ~",colnames(ic50.train)[4]))
+table(fit$p.value[,2]<.05)
+fit <- eBayes(lmFit(CCLE_EXP[,rownames(ic50.val)],model.matrix(~ic50.val[,1])))
+hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(ic50.val)[1]))
+table(fit$p.value[,2]<.05)
+fit <- eBayes(lmFit(CCLE_EXP[,rownames(ic50.val)],model.matrix(~ic50.val[,2])))
+hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(ic50.val)[2]))
+table(fit$p.value[,2]<.05)
+title(main="univariate difefrential expression for sensitivity to MEKi across SANGER & CCLE",outer=TRUE)
 
 
-# model for prediction
-IC50.MEK.ccle <- apply(normalizeCyclicLoess(M2),1,mean)
-IC50.MEK.sanger <- apply(normalizeCyclicLoess(M[,-1]),1,mean)
-names(IC50.MEK.ccle) <- rownames(M2)
-names(IC50.MEK.sanger) <- rownames(M)
+
+
+###################################################################################################################
+# train our predictive model of MEK response in ccle
+# using a penalized regression approach  
+# with alpha=.1 (more ridge) and determine lambda using nfolds= 5
+# the robustness of the model is increased by boostrapping (n=100)
+# train in sanger cells
+# validate each model in ccle
+###################################################################################################################
+
+# # get rid of the non informative cell lines
+# tmp <- sapply(colnames(ic50.train),function(x){rownames(ic50.train)[which(ic50.train[,x]<quantile(ic50.train[,x],probs=.6) & ic50.train[,x]>quantile(ic50.train[,x],probs=.4))]})
+# tmp <- as.character(tmp)
+# trash <- which(rownames(ic50.train) %in% unique(tmp[duplicated(tmp)]))
 
 
 par(mfrow=c(1,1))
 require(glmnet)
-
-N <- 100
+N <- 30
 fit <- c()
 selected <- c()
 yhat <- c()
@@ -387,29 +410,47 @@ models <- 0
 i <- 0
 while(models<N)
 {
-  
-  j <- sample(names(IC50.MEK.sanger),replace=TRUE)
-  trainex <- rbind(SANGER_EXP[,j],mutations.sanger[,j])
-  cv.fit <- cv.glmnet(t(trainex), y=IC50.MEK.sanger[j], nfolds=3, alpha=.1)
-  fit <- glmnet(x=t(trainex),y=IC50.MEK.sanger,alpha=.1,lambda=cv.fit$lambda.1se)
+  dev <- c()
+  val <- c()
+  j <- sample(rownames(ic50.train),replace=TRUE)
+  table(j)
+  #trainex <- SANGER_EXP[,j]
+  trainex <- rbind(rbind(SANGER_EXP[,j],mutations.sanger[,j]),kras.info.sanger[,j])
+  vec.train <- apply(normalizeCyclicLoess(ic50.train[j,]),1,mean)
+  cv.fit <- cv.glmnet(t(trainex), y=vec.train,nfolds=5, alpha=.01)
+  fit <- glmnet(x=t(trainex),y=vec.train,alpha=.01,lambda=cv.fit$lambda.1se)
   if(length(which(abs(as.numeric(fit$beta))> 10^-5))>10)
   {
     i=i+1
     print(i)
     selected <- cbind(selected , as.numeric(fit$beta))
-    dev <- which(names(IC50.MEK.ccle) %in% intersect(j,names(IC50.MEK.ccle)))
-    val <- names(IC50.MEK.ccle)
-    validex <- rbind(CCLE_EXP[,val],mutations.ccle[,val])
-    yhat <- c(yhat,list(predict(fit, t(validex),type="link")))
+    
+    dev <- which(rownames(ic50.val) %in% intersect(j,rownames(ic50.val)))
+    val <- rownames(ic50.val)
+    #val <- rownames(ic50.val)[-dev]
+    #intersect(j,val)
+    #validex <- CCLE_EXP[,val]
+    validex <- rbind(rbind(CCLE_EXP[,val],mutations.ccle[,val]),kras.info.ccle[,val])
+    yhat <- c(yhat,list(predict(fit, t(validex))))
     models <- length(yhat)
   } }
 
 rownames(selected) <- rownames(trainex)
-COR <- c()
-for(i in c(1:N)){
-COR <- c(COR,cor(yhat[[i]],IC50.MEK.ccle[rownames(yhat[[i]])]))
+
+y <- c()
+for(i in c(1:length(yhat)))
+{
+  y <- cbind(y, yhat[[i]])
 }
-boxplot(COR)
+rownames(y) <- val
+
+boxplot(list(PD0325901=cor(y,ic50.val[,1],method="spearman"), AZD6244=cor(y,ic50.val[,2],method="spearman")),outline=FALSE,ylim=c(0,1))
+stripchart(list(PD0325901=cor(y,ic50.val[,1],method="spearman"), AZD6244=cor(y,ic50.val[,2],method="spearman")),method="jitter",vertical=TRUE,add=TRUE,col="royalblue",pch=20)
+tmp <- intersect(rownames(ic50.train),rownames(ic50.val))
+a <- cor(ic50.val[tmp,],apply(ic50.train[tmp,],1,mean),method="spearman")[1]
+b <- cor(ic50.val[tmp,],apply(ic50.train[tmp,],1,mean),method="spearman")[2]
+stripchart(list(PD0325901=a, AZD6244=b),pch=20,cex=3,col="orange",add=TRUE,vertical=TRUE)
+abline(h=c(0,.2,.4,.6,.8,1),lty=2)
 
 ###################################################################################################################
 # train our predictive model of MEK response in ccle
