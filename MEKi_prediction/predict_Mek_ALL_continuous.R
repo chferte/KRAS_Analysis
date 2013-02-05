@@ -22,6 +22,115 @@ synapseLogin("charles.ferte@sagebase.org","charles")
 ###############################################################
 # load the CCLE data (snm normalized) 
 ###############################################################
+
+## ccle gene expression
+ccle_exp <- loadEntity("syn1417729")
+ccle_exp <- ccle_exp$objects$eset
+
+library(org.Hs.eg.db)
+tmp <- unlist(mget(x=sub(pattern="_mt",replacement="",x=featureNames(ccle_exp)),org.Hs.egSYMBOL,ifnotfound=NA))
+ 
+combine_probes_2_gene <- function(expr, genes, method="svd"){
+  if(is.list(genes)) genes <- unlist(genes)
+  
+  stopifnot(dim(expr)[1] ==  length(genes))
+  ugenes <- unique(genes)
+  ugenes <- sort(ugenes[!is.na(ugenes)])
+  M <- matrix(NaN, ncol=dim(expr)[2],nrow=length(ugenes),
+              dimnames=list(ugenes, colnames(expr)))
+  
+  for(gene in ugenes){
+    sub.expr <- as.matrix(expr[which(genes == gene),])
+    if(dim(sub.expr)[2] == 1){
+      M[gene,] <- sub.expr
+    }else{
+      tmp <- svd(sub.expr - rowMeans(sub.expr))$v[,1]
+      tmp.c <- mean(cor(tmp, t(sub.expr)))
+      #cat(gene," ", tmp.c, "\n")
+      multiplier <- ifelse(tmp.c < 0, -1, 1)
+      M[gene,] <- tmp * multiplier
+    }
+  }
+  M
+}
+
+ccle_exp1 <- combine_probes_2_gene(expr=ccle_exp,genes=tmp)
+colnames(ccle_exp1) <- sampleNames(ccle_exp)
+ccle_exp <- ccle_exp1
+rm(ccle_exp1)
+
+## input ccle hybrid capture
+ccle_mut <- read.delim("/home/cferte/cell_line_data/CCLE_hybrid_capture1650_hg19_NoCommonSNPs_NoNeutralVariants_CDS_2012.05.07.maf",header=TRUE)
+ccle_mut <- ccle_mut[which(ccle_mut$Hugo_Symbol!="Unknown"),]
+ccle_mut <- ccle_mut[,c("Hugo_Symbol","Tumor_Sample_Barcode","Protein_Change", "Genome_Change")]
+ccle_mut$Protein_Change[ccle_mut$Protein_Change==""] <- ccle_mut$Genome_Change[ ccle_mut$Protein_Change==""]
+MATMUT<-matrix(0,nrow=length(unique(ccle_mut$Hugo_Symbol)),ncol=length(unique(ccle_mut$Tumor_Sample_Barcode)))
+colnames(MATMUT) <- unique(ccle_mut$Tumor_Sample_Barcode)
+rownames(MATMUT) <- unique(ccle_mut$Hugo_Symbol)
+for(i in rownames(MATMUT)){
+  MATMUT[i,c(ccle_mut$Tumor_Sample_Barcode[which(ccle_mut$Hugo_Symbol==i)])] <- c(ccle_mut$Protein_Change[which(ccle_mut$Hugo_Symbol==i)])  
+}
+ccle_mut <- MATMUT
+rm(MATMUT)
+
+
+## input the ccle drug response
+ccle_drug <- read.delim2("/home/cferte/cell_line_data/ccle_drug_response_v2.txt",header=TRUE,as.is=TRUE)
+drug <- matrix(NA,nrow=length(unique(ccle_drug$CCLE_Name)),ncol=length(unique(ccle_drug$Compound)))
+colnames(drug) <- unique(ccle_drug$Compound)
+rownames(drug) <- unique(ccle_drug$CCLE_Name)
+drug <- drug[-which(rownames(drug)=="b"),]
+
+for(i in rownames(drug)){
+  for(k in colnames(drug)){
+    tmp <- ccle_drug$ActArea_.raw.[which(ccle_drug$CCLE_Name==i & ccle_drug$Compound==k)]
+  if(length(tmp)!=0){drug[i,k] <-tmp} 
+}}
+
+ccle_drug <- drug
+rm(drug)
+
+## input the ccle cnv
+ccle_cnv <- loadEntity("syn1417763")
+ccle_cnv <- ccle_cnv$objects$eset
+tmp <- unlist(mget(x=sub(pattern="_eg",replacement="",x=featureNames(ccle_cnv)),org.Hs.egSYMBOL,ifnotfound=NA))
+ccle_cnv1 <- combine_probes_2_gene(expr=ccle_cnv,genes=tmp)
+colnames(ccle_cnv1) <- sampleNames(ccle_cnv)
+ccle_cnv <- ccle_cnv1
+rm(ccle_cnv1,tmp)
+
+# make the sampleNames coherent between mut exp and cnv
+tmp <- intersect(colnames(ccle_exp),colnames(ccle_cnv))
+tmp <- intersect(tmp,colnames(ccle_mut))
+tmp <- intersect(tmp,rownames(ccle_drug))
+ccle_cnv <- ccle_cnv[,tmp]
+ccle_exp <- ccle_exp[,tmp]
+ccle_mut <- ccle_mut[,tmp]
+
+## input the ccle info
+ccle_info <- read.delim("/home/cferte/cell_line_data/CCLE_sample_info_file_2012-04-06.txt")
+table(ccle_info$Histology)
+
+###############################################################
+# load the sanger data (snm normalized) 
+###############################################################
+
+## sanger gene expression
+sanger_exp <- loadEntity("syn1417725")
+
+## sanger hybrid capture
+
+## sanger drug response
+
+## sanger cnv
+sanger_cnv <- loadEntity("syn1417761")
+
+
+
+###############################################################
+# load the CCLE data (snm normalized) 
+###############################################################
+
 CCLE_RMA <- loadEntity('syn1589873')
 CCLE_RMA <- CCLE_RMA$objects$CCLE_RMA
 
