@@ -16,393 +16,67 @@ library(caret)
 library(glmnet)
 library(snm)
 library(synapseClient)
-source("/home/cferte/FELLOW/cferte/KRAS_Project/JUSTIN_PREDICT_CCLE/code/lung_analysis_functions.R")
 synapseLogin("charles.ferte@sagebase.org","charles")
 
 ###############################################################
 # load the CCLE data (snm normalized) 
 ###############################################################
+ccle_all <- loadEntity("syn1671180")
+ccle_all <- ccle_all$objects$ccle_data
+assign(x=names(ccle_all)[1],ccle_all[[1]])
+assign(x=names(ccle_all)[2],ccle_all[[2]])
+assign(x=names(ccle_all)[3],ccle_all[[3]])
+assign(x=names(ccle_all)[4],ccle_all[[4]])
+assign(x=names(ccle_all)[5],ccle_all[[5]])
+assign(x=names(ccle_all)[6],ccle_all[[6]])
 
-## ccle gene expression
-ccle_exp <- loadEntity("syn1417729")
-ccle_exp <- ccle_exp$objects$eset
-
-library(org.Hs.eg.db)
-tmp <- unlist(mget(x=sub(pattern="_mt",replacement="",x=featureNames(ccle_exp)),org.Hs.egSYMBOL,ifnotfound=NA))
- 
-combine_probes_2_gene <- function(expr, genes, method="svd"){
-  if(is.list(genes)) genes <- unlist(genes)
-  
-  stopifnot(dim(expr)[1] ==  length(genes))
-  ugenes <- unique(genes)
-  ugenes <- sort(ugenes[!is.na(ugenes)])
-  M <- matrix(NaN, ncol=dim(expr)[2],nrow=length(ugenes),
-              dimnames=list(ugenes, colnames(expr)))
-  
-  for(gene in ugenes){
-    sub.expr <- as.matrix(expr[which(genes == gene),])
-    if(dim(sub.expr)[2] == 1){
-      M[gene,] <- sub.expr
-    }else{
-      tmp <- svd(sub.expr - rowMeans(sub.expr))$v[,1]
-      tmp.c <- mean(cor(tmp, t(sub.expr)))
-      #cat(gene," ", tmp.c, "\n")
-      multiplier <- ifelse(tmp.c < 0, -1, 1)
-      M[gene,] <- tmp * multiplier
-    }
-  }
-  M
-}
-
-ccle_exp1 <- combine_probes_2_gene(expr=ccle_exp,genes=tmp)
-colnames(ccle_exp1) <- sampleNames(ccle_exp)
-ccle_exp <- ccle_exp1
-rm(ccle_exp1)
-
-## input ccle hybrid capture
-ccle_mut <- read.delim("/home/cferte/cell_line_data/CCLE_hybrid_capture1650_hg19_NoCommonSNPs_NoNeutralVariants_CDS_2012.05.07.maf",header=TRUE)
-ccle_mut <- ccle_mut[which(ccle_mut$Hugo_Symbol!="Unknown"),]
-ccle_mut <- ccle_mut[,c("Hugo_Symbol","Tumor_Sample_Barcode","Protein_Change", "Genome_Change")]
-ccle_mut$Protein_Change[ccle_mut$Protein_Change==""] <- ccle_mut$Genome_Change[ ccle_mut$Protein_Change==""]
-MATMUT<-matrix(0,nrow=length(unique(ccle_mut$Hugo_Symbol)),ncol=length(unique(ccle_mut$Tumor_Sample_Barcode)))
-colnames(MATMUT) <- unique(ccle_mut$Tumor_Sample_Barcode)
-rownames(MATMUT) <- unique(ccle_mut$Hugo_Symbol)
-for(i in rownames(MATMUT)){
-  MATMUT[i,c(ccle_mut$Tumor_Sample_Barcode[which(ccle_mut$Hugo_Symbol==i)])] <- c(ccle_mut$Protein_Change[which(ccle_mut$Hugo_Symbol==i)])  
-}
-ccle_mut <- MATMUT
-rm(MATMUT)
-
-
-## input the ccle drug response
-ccle_drug <- read.delim2("/home/cferte/cell_line_data/ccle_drug_response_v2.txt",header=TRUE,as.is=TRUE)
-drug <- matrix(NA,nrow=length(unique(ccle_drug$CCLE_Name)),ncol=length(unique(ccle_drug$Compound)))
-colnames(drug) <- unique(ccle_drug$Compound)
-rownames(drug) <- unique(ccle_drug$CCLE_Name)
-drug <- drug[-which(rownames(drug)=="b"),]
-
-for(i in rownames(drug)){
-  for(k in colnames(drug)){
-    tmp <- ccle_drug$ActArea_.raw.[which(ccle_drug$CCLE_Name==i & ccle_drug$Compound==k)]
-  if(length(tmp)!=0){drug[i,k] <-tmp} 
-}}
-
-ccle_drug <- drug
-rm(drug)
-
-## input the ccle cnv
-ccle_cnv <- loadEntity("syn1417763")
-ccle_cnv <- ccle_cnv$objects$eset
-tmp <- unlist(mget(x=sub(pattern="_eg",replacement="",x=featureNames(ccle_cnv)),org.Hs.egSYMBOL,ifnotfound=NA))
-ccle_cnv1 <- combine_probes_2_gene(expr=ccle_cnv,genes=tmp)
-colnames(ccle_cnv1) <- sampleNames(ccle_cnv)
-ccle_cnv <- ccle_cnv1
-rm(ccle_cnv1,tmp)
-
-# make the sampleNames coherent between mut exp and cnv
-tmp <- intersect(colnames(ccle_exp),colnames(ccle_cnv))
-tmp <- intersect(tmp,colnames(ccle_mut))
-tmp <- intersect(tmp,rownames(ccle_drug))
-ccle_cnv <- ccle_cnv[,tmp]
+# make the data coherent between all the datasets
+tmp <- intersect(colnames(ccle_cnv),colnames(ccle_exp))
+tmp <- intersect(colnames(ccle_mut),tmp)
+tmp <- intersect(rownames(ccle_drug),tmp)
 ccle_exp <- ccle_exp[,tmp]
+ccle_cnv <- ccle_cnv[,tmp]
 ccle_mut <- ccle_mut[,tmp]
+ccle_drug <- ccle_drug[tmp,]
+ccle_info <- ccle_info[which(ccle_info$CCLE.name %in% intersect(tmp,ccle_info$CCLE.name)),]
+rm(tmp)
 
-## input the ccle info
-ccle_info <- read.delim("/home/cferte/cell_line_data/CCLE_sample_info_file_2012-04-06.txt")
-table(ccle_info$Histology)
+#modify the ccle_mut into a binary matrix
+ccle_mut[ccle_mut!="0"] <- 1
+ccle_mut <- apply(ccle_mut,2,as.numeric)
 
-###############################################################
-# load the sanger data (snm normalized) 
-###############################################################
-
-## sanger gene expression
-sanger_exp <- loadEntity("syn1417725")
-
-## sanger hybrid capture
-
-## sanger drug response
-
-## sanger cnv
-sanger_cnv <- loadEntity("syn1417761")
-
-
-
-###############################################################
-# load the CCLE data (snm normalized) 
-###############################################################
-
-CCLE_RMA <- loadEntity('syn1589873')
-CCLE_RMA <- CCLE_RMA$objects$CCLE_RMA
-
-# load the ccle drug information and make it coherent with ccle_EXP
-ccle_EXP <- CCLE_RMA
-rm(CCLE_RMA)
-ccle_drug <- loadEntity('syn1354656')
-ccle_drug <- ccle_drug$objects$ccle_drug
-ccle_drug <- ccle_drug@data
-rownames(ccle_drug) <- sapply(strsplit(split="_",x=rownames(ccle_drug)),function(x){x[[1]]})
-ccle_drug <- ccle_drug[colnames(ccle_EXP),]
-CCLE_EXP <- ccle_EXP
-
-# load the KRAS_CCLE
-ccle_kras <- loadEntity('syn1443160')
-KRAS_CCLE <- ccle_kras$objects$KRAS_CCLE
-
-KRAS_CCLE <- substr((KRAS_CCLE),3,nchar(KRAS_CCLE))
-KRAS_CCLE[KRAS_CCLE==""] <- "WT"
-table(KRAS_CCLE)
-tmp <- ifelse(KRAS_CCLE %in% c("G12A","G12S","G13D","G13C","Q61H","Q61K","Q61L"),"rare",KRAS_CCLE)
-names(tmp) <- names(KRAS_CCLE)
-KRAS_CCLE <- tmp
-table(KRAS_CCLE)
-
-##########################################
-# load the Sanger data 
-##########################################
-source("~/FELLOW/cferte/KRAS_Analysis/data_input/sanger_load_data.R")
-
-# make the gene expresson data coherent
-tmp <- intersect(rownames(CCLE_EXP),rownames(SANGER_EXP))
-SANGER_EXP <- SANGER_EXP[tmp,]
-CCLE_EXP <- CCLE_EXP[tmp,]
-
-
-
-#####################################################################################
-# restrict to the probes that are highly correlated between sanger ccle
-#####################################################################################
-A <- SANGER_EXP
-B <- CCLE_EXP
-tmp <- intersect(rownames(SANGER_EXP),rownames(CCLE_EXP))
-A <- A[tmp,]
-B <- B[tmp,]
-colnames(B) <- gsub(x=colnames(B),pattern="_LUNG",replacement="")
-
-tmp <- intersect(colnames(A),colnames(B))
-rat <- c()
-raton <- c()
-for(i in c(1:dim(A)[1]))
-{
-  raton  <- cor(A[i,tmp],B[i,tmp],method="spearman")
-  rat <- c(rat,raton)
-}
-par(mfrow=c(1,1))
-hist(rat,breaks=100, main="correlation between the gene expression data from Sanger & CCLE",ylab="genes (N)")
-tmp <- rownames(A)[which(rat>.6)]
-SANGER_EXP <- SANGER_EXP[tmp,]
-CCLE_EXP <- CCLE_EXP[tmp,]
-rm(A,B,rat,tmp,raton)
-
-#####################################################################################
-# get rid of the probes that are the less variant
-#####################################################################################
-
-tmp <- apply(CCLE_EXP,1,sd)
-plot(density(tmp))
-hist(tmp)
-tmp1 <- which(tmp>quantile(tmp,probs=.1))
-CCLE_EXP <- CCLE_EXP[tmp1,]
-SANGER_EXP <- SANGER_EXP[tmp1,]
-rm(tmp1,tmp)
-
-#####################################################################################
-# rescale the gene expression data so the ccle and sanger gene expression are comparable
-#####################################################################################
-
-# rescale the data (chemores) to have the same mean and variance than the LUAD
-# Justin's function to rescale the VS to get the same mean/var than the TS
-normalize_to_X <- function(mean.x, sd.x, Y){
-  m.y <- rowMeans(Y)
-  sd.y <- apply(Y, 1, sd)
-  Y.adj <- (Y - m.y) * sd.x / sd.y  + mean.x 
-  Y.adj[sd.y == 0] <- mean.x[sd.y==0]
-  Y.adj
-}
-
-SANGER_EXP <- normalize_to_X(rowMeans(CCLE_EXP),apply(CCLE_EXP,1,sd),SANGER_EXP)
-
-
-#############################################################################
-# focus on the MEK inhibitors
-#############################################################################
-
-# identify the names of the drugs targetting MEK
-ccle.drugs <- read.delim(file="/home/cferte/FELLOW/cferte/KRAS_Analysis/drug_sensitivity_inference/CCLE_drugs.txt",header=T,skip=2)
-sanger.drugs <- read.delim(file="/home/cferte/FELLOW/cferte/KRAS_Analysis/drug_sensitivity_inference/Sanger_drugs.txt",header=T)
-sanger.drugs <- sanger.drugs[which(duplicated(sanger.drugs$DRUG.NAME)!=TRUE),c("DRUG.NAME","TARGET")]
-sanger.drugs$DRUG.NAME <- sub(pattern="-",replacement=".",x=sanger.drugs$DRUG.NAME)
-
-MEK.ccle <-   ccle.drugs$Compound..code.or.generic.name.[grep(pattern="MEK",ccle.drugs$Target.s.)]
-MEK.sanger <- sanger.drugs$DRUG.NAME[grep(pattern="MEK",sanger.drugs$TARGET)]
-#rm(sanger.drugs,ccle.drugs)
-
-# plot the distribution of the IC50 of the MEKi drugs
-par(mfrow=c(2,3), oma=c(1,1,5,1))
-x <- log(sort(SangerDrug[,MEK.sanger[1]]))
-plot(x,main=paste(MEK.sanger[1]),ylab="IC50",pch=20,col="gray60")
-abline(h=quantile(x,probs=.2,na.rm=TRUE),col="red")
-x <- log(sort(SangerDrug[,MEK.sanger[2]]))
-plot(x,main=paste(MEK.sanger[2]),ylab="IC50",pch=20,col="gray60")
-abline(h=quantile(x,probs=.2,na.rm=TRUE),col="red")
-x <- log(sort(SangerDrug[,MEK.sanger[3]]))
-plot(x,main=paste(MEK.sanger[3]),ylab="IC50",pch=20,col="gray60")
-abline(h=quantile(x,probs=.2,na.rm=TRUE),col="red")
-x <- log(sort(SangerDrug[,MEK.sanger[4]]))
-plot(x,main=paste(MEK.sanger[4]),ylab="IC50",pch=20,col="gray60")
-abline(h=quantile(x,probs=.2,na.rm=TRUE),col="red")
-x <- log(sort(ccle_drug[,MEK.ccle[1]]))
-plot(x,main=paste(MEK.ccle[1]),ylab="IC50",pch=20,col="gray60")
-abline(h=quantile(x,probs=.2,na.rm=TRUE),col="red")
-x <- log(sort(ccle_drug[,MEK.ccle[2]]))
-plot(x,main=paste(MEK.ccle[2]),ylab="IC50",pch=20,col="gray60")
-abline(h=quantile(x,probs=.2,na.rm=TRUE),col="red")
-title(main= "distribution of the IC50 across the MEK inhibitors in SANGER & CCLE db",outer=TRUE)
-
-# identify the cell lines that are evaluated for MEK inhibitors in Sanger and in CCLE, and produce matrices of IC50
-MEK.cells.sanger <- rownames(SangerDrug)[-unique(c(which(is.na(SangerDrug[,MEK.sanger[1]])), which(is.na(SangerDrug[,MEK.sanger[2]])), which(is.na(SangerDrug[,MEK.sanger[3]])), which(is.na(SangerDrug[,MEK.sanger[4]]))))]
-mek.ic50.sanger <- SangerDrug[MEK.cells.sanger,MEK.sanger]
-MEK.cells.ccle <- rownames(ccle_drug)[-unique(c(which(is.na(ccle_drug[,MEK.ccle[1]])), which(is.na(ccle_drug[,MEK.ccle[2]]))))]
-mek.ic50.ccle <- ccle_drug[MEK.cells.ccle,MEK.ccle]
-
-rownames(mek.ic50.sanger)
-rownames(mek.ic50.ccle)
-
-
-# correlation between mek inhib of sanger and ccle
-require(car)
-scatterplotMatrix(mek.ic50.sanger,main="correlations in the IC50 of the MEK inhibitors in Sanger")
-scatterplotMatrix(normalizeCyclicLoess(mek.ic50.sanger),main="correlations in the IC50 of the MEK inhibitors in Sanger (Loess normalized)")
-cor(mek.ic50.sanger,method="spearman",use="pairwise.complete.obs")
-cor(normalizeCyclicLoess(mek.ic50.sanger),method="spearman",use="pairwise.complete.obs")
-
-scatterplotMatrix(normalizeCyclicLoess(mek.ic50.ccle),main="correlations in the IC50 of the MEK inhibitors in ccle (Loess normalized)")
-cor(normalizeCyclicLoess(mek.ic50.ccle),method="spearman",use="pairwise.complete.obs")
-
-tmp <- intersect(rownames(mek.ic50.ccle),rownames(mek.ic50.sanger))
-cor(mek.ic50.sanger[tmp,],mek.ic50.ccle[tmp,],method="spearman",use="pairwise.complete.obs")
-
-
-# is there any signal in the differential expression
+# identify the mek inhibitors
+mek.inhib <-   ccle_drugs_info$Compound..code.or.generic.name.[grep(pattern="MEK",ccle_drugs_info$Target.s.)]
+# identify the cells treated consistently with both MEK inhibitors
+mek.cells <- rownames(ccle_drug)[-unique(c(which(is.na(ccle_drug[,mek.inhib[1]])), which(is.na(ccle_drug[,mek.inhib[2]]))))]
+# identify the ic50 of the mek inhibs within the cells
+mek.ic50 <- ccle_drug[mek.cells,mek.inhib]
+  
+# assess if there is any signal in the differential expression
 par(mfrow=c(2,3))
-fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~mek.ic50.sanger[,1])))
-hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(mek.ic50.sanger)[1]))
+fit <- eBayes(lmFit(ccle_exp[,mek.cells],model.matrix(~mek.ic50[,1])))
+hist(fit$p.value[,2],breaks=100, main=paste("ccle expr ~",colnames(mek.ic50)[1]))
 table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~mek.ic50.sanger[,2])))
-hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(mek.ic50.sanger)[2]))
+fit <- eBayes(lmFit(ccle_cnv[,mek.cells],model.matrix(~mek.ic50[,1])))
+hist(fit$p.value[,2],breaks=100, main=paste("ccle cnv ~",colnames(mek.ic50)[1]))
 table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~mek.ic50.sanger[,3])))
-hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(mek.ic50.sanger)[3]))
+fit <- eBayes(lmFit(ccle_mut[,mek.cells],model.matrix(~mek.ic50[,1])))
+hist(fit$p.value[,2],breaks=100, main=paste("ccle mut ~",colnames(mek.ic50)[1]))
 table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(SANGER_EXP[,MEK.cells.sanger],model.matrix(~mek.ic50.sanger[,4])))
-hist(fit$p.value[,2],breaks=100, main=paste("Sanger Expr ~",colnames(mek.ic50.sanger)[4]))
+fit <- eBayes(lmFit(ccle_exp[,mek.cells],model.matrix(~mek.ic50[,2])))
+hist(fit$p.value[,2],breaks=100, main=paste("ccle expr ~",colnames(mek.ic50)[2]))
 table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(CCLE_EXP[,MEK.cells.ccle],model.matrix(~mek.ic50.ccle[,1])))
-hist(fit$p.value[,2],breaks=100, main=paste("CCLE Expr ~",colnames(mek.ic50.ccle)[1]))
+fit <- eBayes(lmFit(ccle_cnv[,mek.cells],model.matrix(~mek.ic50[,2])))
+hist(fit$p.value[,2],breaks=100, main=paste("ccle cnv ~",colnames(mek.ic50)[2]))
 table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(CCLE_EXP[,MEK.cells.ccle],model.matrix(~mek.ic50.ccle[,2])))
-hist(fit$p.value[,2],breaks=100, main=paste("CCLE Expr ~",colnames(mek.ic50.ccle)[2]))
+fit <- eBayes(lmFit(ccle_mut[,mek.cells],model.matrix(~mek.ic50[,2])))
+hist(fit$p.value[,2],breaks=100, main=paste("ccle mut ~",colnames(mek.ic50)[2]))
 table(fit$p.value[,2]<.05)
-title(main="univariate differential expression for sensitivity to MEKi across SANGER & CCLE",outer=TRUE)
 
 
-# ################################################################################################################
-# # load the  mutations data
-# ################################################################################################################
 
-# ################################################################################################################
-# first load the ccle data
-# ################################################################################################################
-MAF1 <- read.delim("/home/cferte/cell_line_data/CCLE_hybrid_capture1650_hg19_NoCommonSNPs_NoNeutralVariants_CDS_2012.05.07.maf",header=TRUE)
-MAF1 <- MAF1[which(MAF1$Hugo_Symbol!="Unknown"),]
-MAF1 <- MAF1[,c("Hugo_Symbol","Tumor_Sample_Barcode","Protein_Change", "Genome_Change")]
-MAF1 <- MAF1[(grep(pattern="LUNG",x=MAF1$Tumor_Sample_Barcode)),]
-MAF1$Tumor_Sample_Barcode <- sapply(strsplit(split="_",x=MAF1$Tumor_Sample_Barcode),function(x){x[[1]]})
-MAF1$Protein_Change[MAF1$Protein_Change==""] <- MAF1$Genome_Change[ MAF1$Protein_Change==""]
+title(main="univariate differential expression & cnv for sensitivity to MEKi in CCLE",outer=TRUE)
 
-# create a binary matrix full of zeros with colnames equal to the sampel names and rownames equal the MUTIDs
-MATMUT<-matrix(0,nrow=length(unique(MAF1$Hugo_Symbol)),ncol=length(unique(MAF1$Tumor_Sample_Barcode)))
-colnames(MATMUT) <- unique(MAF1$Tumor_Sample_Barcode)
-rownames(MATMUT) <- unique(MAF1$Hugo_Symbol)
-
-# assign the protein or genome change information to any sample mutated for any MUTID
-for(i in rownames(MATMUT)){
-  MATMUT[i,c(MAF1$Tumor_Sample_Barcode[which(MAF1$Hugo_Symbol==i)])] <- c(MAF1$Protein_Change[which(MAF1$Hugo_Symbol==i)])  
-}
-mutations.ccle <- MATMUT
-rm(MAF1,MATMUT)
-
-# make the names of the samples coherents for ccle
-tmp <- intersect(rownames(mek.ic50.ccle),colnames(mutations.ccle))
-mutations.ccle <- mutations.ccle[,tmp]
-mek.ic50.ccle <- mek.ic50.ccle[tmp,]
-
-# second, load the mutation data from Sanger
-mutations.sanger <- read.csv("/home/cferte/cell_line_data/Sanger_gdsc_mutation_w3.csv",header=TRUE)
-rownames(mutations.sanger) <- toupper(gsub(pattern="-",replacement="",mutations.sanger$Cell.Line))
-mutations.sanger <- t(mutations.sanger[ grep(pattern="NSCLC",x=mutations.sanger$Tissue),])
-mutations.sanger[grep(pattern="na",x=mutations.sanger)] <- NA
-mutations.sanger[grep(pattern="wt",x=mutations.sanger)] <- "0"
-
-# make the names of the genes coherents between sanger and ccle
-tmp <- intersect(rownames(mutations.sanger),rownames(mutations.ccle))
-mutations.ccle <- mutations.ccle[tmp,]
-mutations.sanger <- mutations.sanger[tmp,]
-
-# make the names of the samples coherents for sanger
-tmp <- intersect(rownames(mek.ic50.sanger),colnames(mutations.sanger))
-mutations.sanger <- mutations.sanger[,tmp]
-mek.ic50.sanger <- mek.ic50.sanger[tmp,]
-
-# get rid of the NA's in Sanger mutations matrix
-KRAS_SANGER <- mutations.sanger["KRAS",]
-KRAS_SANGER[KRAS_SANGER!=0] <- sapply(strsplit(KRAS_SANGER[KRAS_SANGER!=0],split="::"),function(x){x[[1]]})
-mutations.sanger[grep(pattern="p.",x=mutations.sanger)] <- "1"
-
-# transform mutations.sanger into numeric and get rid of NAs
-tmp <- apply(mutations.sanger,2,as.numeric)
-rownames(tmp) <- rownames(mutations.sanger)
-tmp <- tmp[names(which(!is.na(tmp[,1]))),]
-mutations.sanger <- tmp
-rm(tmp)
-
-# restrict (again) to the common genes analyzed for both sanger and ccle
-tmp <- intersect(rownames(mutations.ccle),rownames(mutations.sanger))
-mutations.sanger <- mutations.sanger[tmp,]
-mutations.ccle <- mutations.ccle[tmp,]
-rm(tmp)
-
-# create the KRAS_CCLE
-KRAS_CCLE <- as.character(mutations.ccle["KRAS",])
-names(KRAS_CCLE) <- colnames(mutations.ccle)
-
-# set KRAS_CCLE and KRAS_SANGER to be a factor with same levels across ccle and sanger
-theseLevels  <- unique(c(KRAS_CCLE, KRAS_SANGER))
-table(KRAS_CCLE)
-table(KRAS_SANGER)
-KRAS_CCLE <- factor(KRAS_CCLE, levels=theseLevels)
-KRAS_SANGER <- factor(KRAS_SANGER,levels=theseLevels)
-table(KRAS_CCLE)
-table(KRAS_SANGER)
-kras.info.ccle <- t(model.matrix(~ -1 + KRAS_CCLE))
-rownames(kras.info.ccle) <- sub(pattern="_CCLE",replacement= "", x=rownames(kras.info.ccle), fixed=T)
-colnames(kras.info.ccle) <- names(KRAS_CCLE)
-kras.info.sanger <- t(model.matrix(~ -1 + KRAS_SANGER))
-rownames(kras.info.sanger) <- sub(pattern="_SANGER",replacement= "", x=rownames(kras.info.sanger), fixed=T)
-colnames(kras.info.sanger) <- names(KRAS_SANGER)
-
-# transform then mutations.ccle into a binary matrix
-mutations.ccle[mutations.ccle!="0"] <- "1"
-tmp <- apply(mutations.ccle,2,as.numeric)
-rownames(tmp) <- paste(rownames(mutations.ccle),"_mut",sep="")
-colnames(tmp) <- colnames(mutations.ccle)
-mutations.ccle <- tmp
-rm(tmp)
-rownames(mutations.sanger) <- paste(rownames(mutations.sanger),"_mut",sep="")
-
-
-# get rid of "KRAS_mut"
-mutations.sanger <- mutations.sanger[-which(rownames(mutations.sanger)=="KRAS_mut"),]
-mutations.ccle <- mutations.ccle[-which(rownames(mutations.ccle)=="KRAS_mut"),]
 ################################
 # restrict to KRAS mutant samples only 
 ################################

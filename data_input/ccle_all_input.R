@@ -1,12 +1,12 @@
 # Charles Ferté
 # Sage Bionetworks
-# 14 Sept 2012
+# 5th January 2013
 
 
-# train a model of MEK sensibility (independant response = bionomial)
+# ccle data input
 
 #load the different packages
-options(stringsAsFactors=FALSE)
+
 
 library(affy)
 library(corpcor)
@@ -16,12 +16,8 @@ library(caret)
 library(glmnet)
 library(snm)
 library(synapseClient)
-source("/home/cferte/FELLOW/cferte/KRAS_Project/JUSTIN_PREDICT_CCLE/code/lung_analysis_functions.R")
+options(stringsAsFactors=FALSE)
 synapseLogin("charles.ferte@sagebase.org","charles")
-
-###############################################################
-# load the CCLE data (snm normalized) 
-###############################################################
 
 ## ccle gene expression
 ccle_exp <- loadEntity("syn1417729")
@@ -74,21 +70,37 @@ ccle_mut <- MATMUT
 rm(MATMUT)
 
 
-## input the ccle drug response
+## input the ccle drug response as ActArea Norm
 ccle_drug <- read.delim2("/home/cferte/cell_line_data/ccle_drug_response_v2.txt",header=TRUE,as.is=TRUE)
 drug <- matrix(NA,nrow=length(unique(ccle_drug$CCLE_Name)),ncol=length(unique(ccle_drug$Compound)))
 colnames(drug) <- unique(ccle_drug$Compound)
 rownames(drug) <- unique(ccle_drug$CCLE_Name)
 drug <- drug[-which(rownames(drug)=="b"),]
-
 for(i in rownames(drug)){
   for(k in colnames(drug)){
-    tmp <- ccle_drug$ActArea_.raw.[which(ccle_drug$CCLE_Name==i & ccle_drug$Compound==k)]
+    tmp <- ccle_drug$ActArea_.norm.[which(ccle_drug$CCLE_Name==i & ccle_drug$Compound==k)]
   if(length(tmp)!=0){drug[i,k] <-tmp} 
 }}
-
-ccle_drug <- drug
+ccle_drug_ActAreaNorm <- drug
 rm(drug)
+
+## input the ccle drug response as IC50 Norm
+ccle_drug <- read.delim2("/home/cferte/cell_line_data/ccle_drug_response_v2.txt",header=TRUE,as.is=TRUE)
+drug <- matrix(NA,nrow=length(unique(ccle_drug$CCLE_Name)),ncol=length(unique(ccle_drug$Compound)))
+colnames(drug) <- unique(ccle_drug$Compound)
+rownames(drug) <- unique(ccle_drug$CCLE_Name)
+drug <- drug[-which(rownames(drug)=="b"),]
+for(i in rownames(drug)){
+  for(k in colnames(drug)){
+    tmp <- ccle_drug$IC50_.microM...norm.[which(ccle_drug$CCLE_Name==i & ccle_drug$Compound==k)]
+    if(length(tmp)!=0){drug[i,k] <-tmp} 
+  }}
+ccle_drug_IC50Norm <- drug
+rm(drug)
+
+
+ccle_drug <- list(ccle_drug_IC50Norm=ccle_drug_IC50Norm,ccle_drug_ActAreaNorm=ccle_drug_ActAreaNorm)
+
 
 ## input the ccle cnv
 ccle_cnv <- loadEntity("syn1417763")
@@ -101,26 +113,20 @@ rm(ccle_cnv1,tmp)
 
 ## input the ccle info
 ccle_info <- read.delim("/home/cferte/cell_line_data/CCLE_sample_info_file_2012-04-06.txt")
+rownames(ccle_info) <- ccle_info$CCLE.name
 
-# make a list of all objects and save it into synapse
-ccle_data <- list(ccle_info=ccle_info,ccle_exp=ccle_exp,ccle_cnv=ccle_cnv,ccle_mut=ccle_mut,ccle_drug=ccle_drug)
+## input the ccle_drugs_info
+ccle_drugs_info <- read.delim(file="/home/cferte/FELLOW/cferte/KRAS_Analysis/drug_sensitivity_inference/CCLE_drugs.txt",header=T,skip=2)
 
-#ccle_all <- Data(list(name = "ccle_all", parentId = 'syn1670945'))
-#ccle_all <- createEntity(ccle_all)
+# make a list of all objects 
+ccle_data <- list(ccle_info=ccle_info,ccle_exp=ccle_exp,ccle_cnv=ccle_cnv,ccle_mut=ccle_mut,ccle_drug=ccle_drug,ccle_drugs_info=ccle_drugs_info)
+
+# ...and save it into synapse
+ccle_all <- Data(list(name = "ccle_all", parentId = 'syn1670945'))
+ccle_all <- createEntity(ccle_all)
 
 # add object into the data entity
 ccle_all <- addObject(ccle_all,ccle_data)
 
 # push the raw data into this entity
 ccle_all <- storeEntity(entity=ccle_all)
-
-
-
-# # make the sampleNames coherent between mut exp and cnv
-# tmp <- intersect(colnames(ccle_exp),colnames(ccle_cnv))
-# tmp <- intersect(tmp,colnames(ccle_mut))
-# tmp <- intersect(tmp,rownames(ccle_drug))
-# ccle_cnv <- ccle_cnv[,tmp]
-# ccle_exp <- ccle_exp[,tmp]
-# ccle_mut <- ccle_mut[,tmp]
-# 
