@@ -1,7 +1,30 @@
-#source("/Volumes/users/jguinney/projects/h3/analysis/JGLibrary.R")
-#gsets <- load.gmt.data("/Volumes/users/jguinney/projects/h3/resources/c2.cp.v3.1.symbols.gmt")
-source("/home/jguinney/projects/h3/analysis/JGLibrary.R")
-gsets <- load.gmt.data("/home/jguinney/projects/h3/resources/c2.cp.v3.1.symbols.gmt")
+# charles ferté & justin guinney
+# explore the dependencies that exist with specific RAS mutations with other mutations
+
+library(synapseClient)
+synapseLogin(username="charles.ferte@sagebase.org",password="charles")
+
+# # gsets <- load.gmt.data("/Volumes/users/jguinney/projects/h3/resources/c2.cp.v3.1.symbols.gmt")
+# source("/home/cferte/FELLOW/cferte/KRAS_Analysis/mutation_environment/JGLibrary.R")
+# gsets_c2.cp.v3.1 <- load.gmt.data("/home/jguinney/projects/h3/resources/c2.cp.v3.1.symbols.gmt")
+# gsets_c2.cgp.v3.1 <- load.gmt.data("/home/jguinney/projects/h3/resources/c2.cgp.v3.1.symbols.gmt")
+# gsets_c6.all.v3.1.symbols.gmt <- load.gmt.data("/home/jguinney/projects/h3/resources/c6.all.v3.1.symbols.gmt")
+# gsets <- list(gsets_c2.cp.v3.1=gsets_c2.cp.v3.1,gsets_c2.cgp.v3.1 =gsets_c2.cgp.v3.1,gsets_c6.all.v3.1.symbols.gmt=gsets_c6.all.v3.1.symbols.gmt)
+# 
+# # save this list of gene sets into synapse
+# # ...and save it into synapse
+# gsets_all <- Data(list(name = "gene_sets", parentId = 'syn1670945'))
+# gsets_all <- createEntity(gsets_all)
+# 
+# # # add object into the data entity
+# gsets_all <- addObject(gsets_all,gsets)
+# # 
+# # # push the raw data into this entity
+# gsets <- storeEntity(entity=gsets_all) 
+
+gsets <- loadEntity("syn1679661")
+gsets_all <- gsets$objects$gsets
+assign(x="gsets",gsets_all[[1]])
 
 pid_gsets <- gsets[grepl("^PID_",names(gsets))]
 
@@ -26,20 +49,31 @@ test.mut.pathways <- function(MUTtbl, gsets, classFactor, countThreshold=1){
   })
 }
 
-#load("/Volumes/cferte/FELLOW/cferte/KRAS_Analysis/KRAS_LUAD.RData")
-#load("/Volumes/cferte/FELLOW/cferte/KRAS_Analysis/mutations_LUAD.RData")
-load("/home/cferte/FELLOW/cferte/KRAS_Analysis/KRAS_LUAD.RData")
-load("/home/cferte/FELLOW/cferte/KRAS_Analysis/mutations_LUAD.RData")
-rat<-read.delim("/home/cferte/restricted_pwy4.txt",header=F)
-rat <- as.character(rat$V1)
-rat <- gsub(pattern=" ",replacement="",x=rat)
+#load("/Volumes/cferte/FELLOW/cferte/KRAS_Analysis/luad_kras.RData")
+# load("/Volumes/cferte/FELLOW/cferte/KRAS_Analysis/mutations_LUAD.RData")
+# load("/home/cferte/FELLOW/cferte/KRAS_Analysis/luad_kras.RData")
+# load("/home/cferte/FELLOW/cferte/KRAS_Analysis/mutations_LUAD.RData")
 
-mask <- KRAS_LUAD=="G12C" | KRAS_LUAD=="G12V"
-tmp <- MATMUT_LUAD[, mask]
+luad_all <- loadEntity("syn1676707")
+luad_all <- luad_all$objects$luad_data
+luad_mut <- assign(names(luad_all)[2],luad_all[[2]])
+luad_kras <- assign(names(luad_all)[3],luad_all[[3]])
+
+# top pathway in G12C vs. G12V  
+# rat<-read.delim("/home/cferte/restricted_pwy4.txt",header=F)
+# rat <- as.character(rat$V1)
+# rat <- gsub(pattern=" ",replacement="",x=rat)
+# paste(rat,collapse=" ")
+
+rat <- "KEGG_TERPENOID_BACKBONE_BIOSYNTHESIS KEGG_BIOSYNTHESIS_OF_UNSATURATED_FATTY_ACIDS KEGG_HEMATOPOIETIC_CELL_LINEAGE KEGG_OLFACTORY_TRANSDUCTION KEGG_ASTHMA BIOCARTA_RANKL_PATHWAY BIOCARTA_IL17_PATHWAY MIPS_60S_RIBOSOMAL_SUBUNIT_CYTOPLASMIC MIPS_ANTI_BHC110_COMPLEX MIPS_DDB2_COMPLEX MIPS_12S_U11_SNRNP MIPS_SMN_COMPLEX MIPS_CENP_A_NAC_CAD_COMPLEX MIPS_POLYCYSTIN_1_MULTIPROTEIN_COMPLEX REACTOME_GENERIC_TRANSCRIPTION_PATHWAY REACTOME_P75NTR_SIGNALS_VIA_NFKB REACTOME_SIGNALING_BY_GPCR REACTOME_METABOLISM_OF_POLYAMINES REACTOME_ADP_SIGNALLING_THROUGH_P2RY1 REACTOME_GPCR_DOWNSTREAM_SIGNALING REACTOME_PD1_SIGNALING REACTOME_SIGNAL_AMPLIFICATION REACTOME_ZINC_TRANSPORTERS REACTOME_THROMBOXANE_SIGNALLING_THROUGH_TP_RECEPTOR REACTOME_ADP_SIGNALLING_THROUGH_P2RY12 REACTOME_ACTIVATION_OF_THE_AP1_FAMILY_OF_TRANSCRIPTION_FACTORS REACTOME_CALNEXIN_CALRETICULIN_CYCLE REACTOME_N_GLYCAN_TRIMMING_IN_THE_ER_AND_CALNEXIN_CALRETICULIN_CYCLE REACTOME_ADVANCED_GLYCOSYLATION_ENDPRODUCT_RECEPTOR_SIGNALING REACTOME_HEMOSTASIS REACTOME_EARLY_PHASE_OF_HIV_LIFE_CYCLE"
+rat <- unlist(strsplit(x=rat,split=" "))
+
+mask <- luad_kras=="G12C" | luad_kras=="G12V"
+tmp <- luad_mut[, mask]
 tmp <- tmp[-which(rownames(tmp)=="KRAS"),]
 
 factor <- rep("G12C", ncol(tmp))
-factor[colnames(tmp) %in% names(KRAS_LUAD)[KRAS_LUAD %in% "G12V"]] <- "G12V"
+factor[colnames(tmp) %in% names(luad_kras)[luad_kras %in% "G12V"]] <- "G12V"
 f <- factor(factor)
 
 mutex <- apply(tmp, 1, function(x){
