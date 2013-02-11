@@ -19,3 +19,4 @@ probe.gct
 *.gct
 splice_luad_data/
 mutation_environment/c2.cp.v3.1.symbols.gmt
+.DS_Store
