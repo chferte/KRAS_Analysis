@@ -1,7 +1,7 @@
-# charles ferté & justin guinney
+# charles ferté
 # feb 8th 2013
-# explore the spliceosome
-# (make it on ec2 !)
+# read junction data
+
 
 library(synapseClient)
 synapseLogin(username="charles.ferte@sagebase.org",password="charles")
@@ -42,7 +42,7 @@ for(k in c(1:length(myfiles))){
 }
 
 save(junction.matrix,file="/home/cferte/FELLOW/cferte/KRAS_Analysis/splice_luad_data/junction.matrix.RDa")
-#load("/home/cferte/FELLOW/cferte/KRAS_Analysis/splice_luad_data/junction.matrix.RDa")
+load("/home/cferte/FELLOW/cferte/KRAS_Analysis/splice_luad_data/junction.matrix.RDa")
 
 # read the mage file
 mage <- read.delim("/home/cferte/FELLOW/cferte/KRAS_Analysis/splice_luad_data/unc.edu_LUAD.IlluminaHiSeq_RNASeqV2.mage-tab.1.8.0/unc.edu_LUAD.IlluminaHiSeq_RNASeqV2.1.8.0.sdrf.txt",header=TRUE)
