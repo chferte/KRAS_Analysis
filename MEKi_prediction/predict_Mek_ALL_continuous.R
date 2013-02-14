@@ -52,7 +52,7 @@ tmp <- intersect(tmp,colnames(ccle_cnv))
 ccle_exp <- ccle_exp[,tmp]
 ccle_cnv <- ccle_cnv[,tmp]
 ccle_info <- ccle_info[which(ccle_info$CCLE.name %in% intersect(tmp,ccle_info$CCLE.name)),]
-
+rm(tmp)
 
 global.matrix <- rbind(ccle_exp,ccle_cnv)
 tissue.origin <- as.factor(ccle_info$Site.Primary)
@@ -71,6 +71,18 @@ legend(0,1,legend=levels(tissue.origin),cex=.8,col=rainbow(24),pch=20,text.width
 # assign values for the eigengenes since they discriminate well the tissue specificity
 eigengenes <- s$v
 rownames(eigengenes) <- colnames(ccle_exp)
+colnames(eigengenes) <- paste("PC_",seq(from=1,to=ncol(eigengenes),by=1),sep="")
+
+#########################################################################################################
+## feature selection for low variance
+#########################################################################################################
+tmp <- apply(ccle_exp,1,sd)
+ccle_exp <- ccle_exp[which(tmp>quantile(x=tmp,probs=.25)),]
+rm(tmp)
+
+tmp <- apply(ccle_cnv,1,sd)
+ccle_cnv <- ccle_cnv[which(tmp>quantile(x=tmp,probs=.25)),]
+rm(tmp)
 
 #########################################################################################################
 ## Make the data coherent between all the datasets
@@ -85,9 +97,6 @@ ccle_drug <- ccle_drug[tmp,]
 ccle_info <- ccle_info[which(ccle_info$CCLE.name %in% intersect(tmp,ccle_info$CCLE.name)),]
 rm(tmp)
 
-
-
-
 # identify the mek inhibitors
 mek.inhib <-   ccle_drugs_info$Compound..code.or.generic.name.[grep(pattern="MEK",ccle_drugs_info$Target.s.)]
 
@@ -100,29 +109,28 @@ mek.ActArea <- ccle_drug[mek.cells,mek.inhib]
 # assess if there is any signal in the differential expression
 par(mfrow=c(2,2),oma=c(0,0,6,0))
 fit <- eBayes(lmFit(ccle_exp[,mek.cells],model.matrix(~mek.ActArea[,1])))
-hist(fit$p.value[,2],breaks=30, main=paste("gene expr ~",colnames(mek.ActArea)[1]),col="royalblue",xlab="p values")
+hist(fit$p.value[,2],breaks=50, main=paste("gene expr ~",colnames(mek.ActArea)[1]),col="aquamarine4",xlab="p values")
+abline(v=.05,col="red",lty=2,lwd=2)
 table(fit$p.value[,2]<.05)
 fit <- eBayes(lmFit(ccle_cnv[,mek.cells],model.matrix(~mek.ActArea[,1])))
-hist(fit$p.value[,2],breaks=30, main=paste(" cnv ~",colnames(mek.ActArea)[1]),col="royalblue",xlab="p values")
+hist(fit$p.value[,2],breaks=50, main=paste(" cnv ~",colnames(mek.ActArea)[1]),col="aquamarine4",xlab="p values")
+abline(v=.05,col="red",lty=2,lwd=2)
 table(fit$p.value[,2]<.05)
-
 fit <- eBayes(lmFit(ccle_exp[,mek.cells],model.matrix(~mek.ActArea[,2])))
-hist(fit$p.value[,2],breaks=30, main=paste("gene expr ~",colnames(mek.ActArea)[2]),col="royalblue",xlab="p values")
+hist(fit$p.value[,2],breaks=50, main=paste("gene expr ~",colnames(mek.ActArea)[2]),col="aquamarine4",xlab="p values")
+abline(v=.05,col="red",lty=2,lwd=2)
 table(fit$p.value[,2]<.05)
 fit <- eBayes(lmFit(ccle_cnv[,mek.cells],model.matrix(~mek.ActArea[,2])))
-hist(fit$p.value[,2],breaks=30, main=paste(" cnv ~",colnames(mek.ActArea)[2]),col="royalblue",xlab="p values")
+hist(fit$p.value[,2],breaks=50, main=paste(" cnv ~",colnames(mek.ActArea)[2]),col="aquamarine4",xlab="p values")
+abline(v=.05,col="red",lty=2,lwd=2)
 table(fit$p.value[,2]<.05)
 
 title(main=paste("univariate differential gene expression & differential CNV \nfor sensitivity to MEK inhibitors (AZ6244 and PD0325901) \nin the Cancer Cell Line Encyclopedia (n=",length(mek.cells),")",sep=""),outer=TRUE)
 
-
-
 ####################################################################################################
 # define the NSCLC Breast Lung Melanoma Glioma & heMal (hematological malignacies) cells
 ####################################################################################################
-cell.type.vec <- ccle_info$Site.Primary[ ccle_info$CCLE.name %in% mek.cells]
-cell.type.vec <- as.numeric(as.factor(cell.type.vec))
-names(cell.type.vec) <- mek.cells
+
 carcinoma.mek.cells <-  intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology =="carcinoma"])
 nsclc.mek.cells <- carcinoma.mek.cells[grep(pattern="LUNG",x=carcinoma.mek.cells)]
 nsclc.mek.cells <- intersect(nsclc.mek.cells,ccle_info$CCLE.name[ ccle_info$Hist.Subtype1 !="small_cell_carcinoma"])
@@ -132,38 +140,44 @@ melanoma.mek.cells <-  intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histolo
 glioma.mek.cells <-  intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology =="glioma"])
 heMal.mek.cells <- intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology %in% c("haematopoietic_neoplasm","lymphoid_neoplasm")])
 
-#############
+#############################
 # predictive modeling
-#############
+############################
+
+# first define the global matrix
+global.matrix <- rbind(ccle_exp,ccle_cnv,ccle_mut)
+#eigengenes <- t(eigengenes[colnames(global.matrix),c(1:10)])
+#global.matrix <- rbind(global.matrix,eigengenes)
+rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""),paste(rownames(ccle_cnv),"_cnv",sep=""),paste(rownames(ccle_mut),"_mut",sep=""))
+
 selected <- c()
 k <- c()
 j <- c()
 i <- 0
-for(i in c(0:100))
+for(i in c(1:50))
 {
   par(mfrow=c(1,1))
 yhat <- c()
-#train <- sample(mek.cells,replace=TRUE)
-train <- sample(nsclc.mek.cells,replace=TRUE)
-  val <- nsclc.mek.cells[-which(nsclc.mek.cells %in% train)]
-  #val <- mek.cells[-which(mek.cells %in% nsclc.mek.cells)]
-trainex <- rbind(ccle_exp[,train],ccle_cnv[,train],ccle_mut[,train],cell.type.vec[train])
-rownames(trainex) <- c(paste(rownames(ccle_exp),"_exp",sep=""),paste(rownames(ccle_cnv),"_cnv",sep=""),paste(rownames(ccle_mut),"_mut",sep=""),"cell.type.vec")  
-pen <- c(rep(1,times=dim(trainex)[1]-1),0)
+train <- sample(mek.cells,replace=TRUE)
+  val <-mek.cells[-which(mek.cells %in% train)]
+trainex <- global.matrix[,train]
+#pen <- c(rep(1,times=dim(trainex)[1]-1),0)
 vec.train <-apply(ccle_drug[train,mek.inhib],1,mean)
-cv.fit <- cv.glmnet(t(trainex), y=vec.train,nfolds=3, alpha=1)
-fit <- glmnet(x=t(trainex),y=vec.train,alpha=1,lambda=cv.fit$lambda.1se,penalty.factor=pen)
-validex <- rbind(ccle_exp[,val],ccle_cnv[,val],ccle_mut[,val],cell.type.vec[val])
+cv.fit <- cv.glmnet(t(trainex), y=vec.train,nfolds=3, alpha=.1)
+fit <- glmnet(x=t(trainex),y=vec.train,alpha=1,lambda=cv.fit$lambda.1se)
+validex <- global.matrix[,val]
   rownames(validex) <- rownames(trainex)
 yhat <- predict(fit, t(validex))
   selected <- cbind(selected,as.numeric(fit$beta))
 j <- c(j,cor(yhat,mek.ActArea[rownames(yhat),1],method="spearman",use="pairwise.complete.obs"))
 k <- c(k,cor(yhat,mek.ActArea[rownames(yhat),2],method="spearman",use="pairwise.complete.obs"))
-i <- i+1
-  print(i)
+print(i)
 }
-boxplot(list(PD0325901=j,AZD6244=k), main="meki prediction trained in all ccle but nsclc and validated in nsclc",ylab="spearman correlation with ActArea")
-stripchart(list(PD0325901=j,AZD6244=k),vertical=TRUE,method="jitter",add=TRUE,col="red",pch=20)
+boxplot(list(PD0325901=j,AZD6244=k), main="Correlation between models and true ActArea of Mek inhibitors \ training in all cell lines (n=444) and validated in the cell lines not used for training",ylab="Spearman rho",ylim=c(0,1))
+stripchart(list(PD0325901=j,AZD6244=k),vertical=TRUE,method="jitter",add=TRUE,col="aquamarine4",pch=20)
+
+
+
 
 rownames(selected) <- rownames(fit$beta)
 
@@ -284,7 +298,7 @@ for(i in c(1:length(yhat))){
 
 par(mfrow=c(1,1))
 boxplot(list(PD0325901=cor(Y,mek.ActArea[rownames(Y),1],method="spearman",use="pairwise.complete.obs"), AZD6244=cor(Y,mek.ActArea[rownames(Y),2],method="spearman",use="pairwise.complete.obs")),outline=FALSE,ylim=c(0,1),cex.axis=.7)
-stripchart(list(PD0325901=cor(Y,mek.ActArea[rownames(Y),1],method="spearman",use="pairwise.complete.obs"), AZD6244=cor(Y,mek.ActArea[rownames(Y),2],method="spearman",use="pairwise.complete.obs")),method="jitter",vertical=TRUE,add=TRUE,col="royalblue",pch=20)
+stripchart(list(PD0325901=cor(Y,mek.ActArea[rownames(Y),1],method="spearman",use="pairwise.complete.obs"), AZD6244=cor(Y,mek.ActArea[rownames(Y),2],method="spearman",use="pairwise.complete.obs")),method="jitter",vertical=TRUE,add=TRUE,col="aquamarine5",pch=20)
 abline(h=c(0,.2,.4,.6,.8,1),lty=2)
 
 # #######################################################################
