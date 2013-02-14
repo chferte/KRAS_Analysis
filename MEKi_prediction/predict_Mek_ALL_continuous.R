@@ -1,6 +1,6 @@
 # Charles Ferté
 # Sage Bionetworks
-# 14 Sept 2012
+# 14 Feb 2012
 
 
 # train a model of MEK sensibility (independant response = bionomial)
@@ -35,7 +35,46 @@ assign(x=names(ccle_drug)[2],ccle_drug[[2]])
 # let's use the ActArea as ccle_drug
 ccle_drug <- ccle_drug_ActAreaNorm
 
-# make the data coherent between all the datasets
+#modify the ccle_mut into a binary matrix
+ccle_mut[ccle_mut!="0"] <- 1
+tmp <- rownames(ccle_mut)
+ccle_mut <- apply(ccle_mut,2,as.numeric)
+rownames(ccle_mut) <- tmp
+rm(tmp)
+
+
+#########################################################################################################################################
+# make the data coherent between exp and cnv to ultimately compute the eigengenes vector
+#########################################################################################################################################
+
+tmp <- intersect(colnames(ccle_exp),ccle_info$CCLE.name)
+tmp <- intersect(tmp,colnames(ccle_cnv))
+ccle_exp <- ccle_exp[,tmp]
+ccle_cnv <- ccle_cnv[,tmp]
+ccle_info <- ccle_info[which(ccle_info$CCLE.name %in% intersect(tmp,ccle_info$CCLE.name)),]
+
+
+global.matrix <- rbind(ccle_exp,ccle_cnv)
+tissue.origin <- as.factor(ccle_info$Site.Primary)
+s <- fast.svd(global.matrix-rowMeans(global.matrix))
+par(mfrow=c(1,1))
+
+# percentage variance explained
+plot(s$d^2/sum(s$d^2),pch=20)
+
+# plot first and second svd
+plot(s$v[,1],s$v[,2],col=rainbow(24)[tissue.origin],pch=20,cex=1.5, xlab="PC1",ylab="PC2")
+plot.new()
+legend(0,1,legend=levels(tissue.origin),cex=.8,col=rainbow(24),pch=20,text.width=.4,text.font=2,
+       text.col=rainbow(24))
+
+# assign values for the eigengenes since they discriminate well the tissue specificity
+eigengenes <- s$v
+rownames(eigengenes) <- colnames(ccle_exp)
+
+#########################################################################################################
+## Make the data coherent between all the datasets
+#########################################################################################################
 tmp <- intersect(colnames(ccle_cnv),colnames(ccle_exp))
 tmp <- intersect(colnames(ccle_mut),tmp)
 tmp <- intersect(rownames(ccle_drug),tmp)
@@ -46,65 +85,56 @@ ccle_drug <- ccle_drug[tmp,]
 ccle_info <- ccle_info[which(ccle_info$CCLE.name %in% intersect(tmp,ccle_info$CCLE.name)),]
 rm(tmp)
 
-# get rid of the less variant probes in ccle_exp
-tmp <- apply(ccle_exp,1,sd)
-tmp1 <- which(tmp>quantile(tmp,probs=.2))
-ccle_exp <- ccle_exp[tmp1,]
-rm(tmp,tmp1)
 
-# get rid of the less variant probes in ccle_exp
-tmp <- apply(ccle_cnv,1,sd)
-tmp1 <- which(tmp>quantile(tmp,probs=.2))
-ccle_cnv <- ccle_cnv[tmp1,]
-rm(tmp,tmp1)
 
-#modify the ccle_mut into a binary matrix
-ccle_mut[ccle_mut!="0"] <- 1
-tmp <- rownames(ccle_mut)
-ccle_mut <- apply(ccle_mut,2,as.numeric)
-rownames(ccle_mut) <- tmp
-rm(tmp)
 
 # identify the mek inhibitors
 mek.inhib <-   ccle_drugs_info$Compound..code.or.generic.name.[grep(pattern="MEK",ccle_drugs_info$Target.s.)]
-# identify the cells treated consistently with both MEK inhibitors
+
+# identify the cells that have been consistently evaluated for with both MEK inhibitors
 mek.cells <- rownames(ccle_drug)[-unique(c(which(is.na(ccle_drug[,mek.inhib[1]])), which(is.na(ccle_drug[,mek.inhib[2]]))))]
-# identify the ic50 of the mek inhibs within the cells
-mek.ic50 <- ccle_drug[mek.cells,mek.inhib]
+
+# identify the ActArea of the mek inhibs within the cells
+mek.ActArea <- ccle_drug[mek.cells,mek.inhib]
   
 # assess if there is any signal in the differential expression
-par(mfrow=c(2,3))
-fit <- eBayes(lmFit(ccle_exp[,mek.cells],model.matrix(~mek.ic50[,1])))
-hist(fit$p.value[,2],breaks=100, main=paste("ccle expr ~",colnames(mek.ic50)[1]))
+par(mfrow=c(2,2),oma=c(0,0,6,0))
+fit <- eBayes(lmFit(ccle_exp[,mek.cells],model.matrix(~mek.ActArea[,1])))
+hist(fit$p.value[,2],breaks=30, main=paste("gene expr ~",colnames(mek.ActArea)[1]),col="royalblue",xlab="p values")
 table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(ccle_cnv[,mek.cells],model.matrix(~mek.ic50[,1])))
-hist(fit$p.value[,2],breaks=100, main=paste("ccle cnv ~",colnames(mek.ic50)[1]))
+fit <- eBayes(lmFit(ccle_cnv[,mek.cells],model.matrix(~mek.ActArea[,1])))
+hist(fit$p.value[,2],breaks=30, main=paste(" cnv ~",colnames(mek.ActArea)[1]),col="royalblue",xlab="p values")
 table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(ccle_mut[,mek.cells],model.matrix(~mek.ic50[,1])))
-hist(fit$p.value[,2],breaks=100, main=paste("ccle mut ~",colnames(mek.ic50)[1]))
+
+fit <- eBayes(lmFit(ccle_exp[,mek.cells],model.matrix(~mek.ActArea[,2])))
+hist(fit$p.value[,2],breaks=30, main=paste("gene expr ~",colnames(mek.ActArea)[2]),col="royalblue",xlab="p values")
 table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(ccle_exp[,mek.cells],model.matrix(~mek.ic50[,2])))
-hist(fit$p.value[,2],breaks=100, main=paste("ccle expr ~",colnames(mek.ic50)[2]))
+fit <- eBayes(lmFit(ccle_cnv[,mek.cells],model.matrix(~mek.ActArea[,2])))
+hist(fit$p.value[,2],breaks=30, main=paste(" cnv ~",colnames(mek.ActArea)[2]),col="royalblue",xlab="p values")
 table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(ccle_cnv[,mek.cells],model.matrix(~mek.ic50[,2])))
-hist(fit$p.value[,2],breaks=100, main=paste("ccle cnv ~",colnames(mek.ic50)[2]))
-table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(ccle_mut[,mek.cells],model.matrix(~mek.ic50[,2])))
-hist(fit$p.value[,2],breaks=100, main=paste("ccle mut ~",colnames(mek.ic50)[2]))
-table(fit$p.value[,2]<.05)
-title(main="univariate differential expression & cnv for sensitivity to MEKi in CCLE",outer=TRUE)
+
+title(main=paste("univariate differential gene expression & differential CNV \nfor sensitivity to MEK inhibitors (AZ6244 and PD0325901) \nin the Cancer Cell Line Encyclopedia (n=",length(mek.cells),")",sep=""),outer=TRUE)
+
+
 
 ####################################################################################################
-# tests
+# define the NSCLC Breast Lung Melanoma Glioma & heMal (hematological malignacies) cells
 ####################################################################################################
-
 cell.type.vec <- ccle_info$Site.Primary[ ccle_info$CCLE.name %in% mek.cells]
-#cell.type.vec1 <- paste(ccle_info$Site.Primary[ ccle_info$CCLE.name %in% mek.cells],ccle_info$Hist.Subtype1[ ccle_info$CCLE.name %in% mek.cells],sep="_")
 cell.type.vec <- as.numeric(as.factor(cell.type.vec))
 names(cell.type.vec) <- mek.cells
 carcinoma.mek.cells <-  intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology =="carcinoma"])
-lung.mek.cells <- carcinoma.mek.cells[grep(pattern="LUNG",x=carcinoma.mek.cells)]
-nsclc.mek.cells <- intersect(lung.mek.cells,ccle_info$CCLE.name[ ccle_info$Hist.Subtype1 !="small_cell_carcinoma"])
+nsclc.mek.cells <- carcinoma.mek.cells[grep(pattern="LUNG",x=carcinoma.mek.cells)]
+nsclc.mek.cells <- intersect(nsclc.mek.cells,ccle_info$CCLE.name[ ccle_info$Hist.Subtype1 !="small_cell_carcinoma"])
+crc.mek.cells <- carcinoma.mek.cells[grep(pattern="LARGE_INTESTINE",x=carcinoma.mek.cells)]
+breast.mek.cells <- carcinoma.mek.cells[grep(pattern="BREAST",x=carcinoma.mek.cells)]
+melanoma.mek.cells <-  intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology =="malignant_melanoma"])
+glioma.mek.cells <-  intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology =="glioma"])
+heMal.mek.cells <- intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology %in% c("haematopoietic_neoplasm","lymphoid_neoplasm")])
+
+#############
+# predictive modeling
+#############
 selected <- c()
 k <- c()
 j <- c()
@@ -127,8 +157,8 @@ validex <- rbind(ccle_exp[,val],ccle_cnv[,val],ccle_mut[,val],cell.type.vec[val]
   rownames(validex) <- rownames(trainex)
 yhat <- predict(fit, t(validex))
   selected <- cbind(selected,as.numeric(fit$beta))
-j <- c(j,cor(yhat,mek.ic50[rownames(yhat),1],method="spearman",use="pairwise.complete.obs"))
-k <- c(k,cor(yhat,mek.ic50[rownames(yhat),2],method="spearman",use="pairwise.complete.obs"))
+j <- c(j,cor(yhat,mek.ActArea[rownames(yhat),1],method="spearman",use="pairwise.complete.obs"))
+k <- c(k,cor(yhat,mek.ActArea[rownames(yhat),2],method="spearman",use="pairwise.complete.obs"))
 i <- i+1
   print(i)
 }
@@ -157,8 +187,8 @@ a <- tuneRF(x=t(trainex), y=vec.train, stepFactor=1.5, doBest=TRUE, trace=TRUE, 
 fitRF <- randomForest(x=t(trainex), y=vec.train, mtry=a$mtry,do.trace=10, ntree=200, importance=TRUE,type="regression")
 yhatRF <- predict(object=fitRF, newdata=t(validex),type="response")
 
-cor(yhatRF,mek.ic50[names(yhatRF),1],method="spearman",use="pairwise.complete.obs")
-cor(yhatRF,mek.ic50[names(yhatRF),2],method="spearman",use="pairwise.complete.obs")
+cor(yhatRF,mek.ActArea[names(yhatRF),1],method="spearman",use="pairwise.complete.obs")
+cor(yhatRF,mek.ActArea[names(yhatRF),2],method="spearman",use="pairwise.complete.obs")
 
 varImpPlot(fitRF,n.var=10,sort=TRUE)
 
@@ -187,8 +217,8 @@ dat1 <- as.data.frame(t(dat1))
 colnames(dat1) <- c(top,"ActArea.train")
 fit1 <- lm(ActArea.train ~ LRAT_exp + OSTalpha_exp + PAQR5_exp,data=dat1)
 yhat1 <- predict(fit1, as.data.frame(t(validex1[top,])),type="response")
-a <- c(a,cor(yhat1,mek.ic50[names(yhat1),1],method="spearman",use="pairwise.complete.obs"))
-b <- c(b,cor(yhat1,mek.ic50[names(yhat1),2],method="spearman",use="pairwise.complete.obs"))
+a <- c(a,cor(yhat1,mek.ActArea[names(yhat1),1],method="spearman",use="pairwise.complete.obs"))
+b <- c(b,cor(yhat1,mek.ActArea[names(yhat1),2],method="spearman",use="pairwise.complete.obs"))
 print(i)
 }
 boxplot(list(PD0325901=a,AZD6244=b), main="meki prediction in nsclc using top genes",ylab="spearman correlation with ActArea",ylim=c(0,1))
@@ -253,8 +283,8 @@ for(i in c(1:length(yhat))){
 }
 
 par(mfrow=c(1,1))
-boxplot(list(PD0325901=cor(Y,mek.ic50[rownames(Y),1],method="spearman",use="pairwise.complete.obs"), AZD6244=cor(Y,mek.ic50[rownames(Y),2],method="spearman",use="pairwise.complete.obs")),outline=FALSE,ylim=c(0,1),cex.axis=.7)
-stripchart(list(PD0325901=cor(Y,mek.ic50[rownames(Y),1],method="spearman",use="pairwise.complete.obs"), AZD6244=cor(Y,mek.ic50[rownames(Y),2],method="spearman",use="pairwise.complete.obs")),method="jitter",vertical=TRUE,add=TRUE,col="royalblue",pch=20)
+boxplot(list(PD0325901=cor(Y,mek.ActArea[rownames(Y),1],method="spearman",use="pairwise.complete.obs"), AZD6244=cor(Y,mek.ActArea[rownames(Y),2],method="spearman",use="pairwise.complete.obs")),outline=FALSE,ylim=c(0,1),cex.axis=.7)
+stripchart(list(PD0325901=cor(Y,mek.ActArea[rownames(Y),1],method="spearman",use="pairwise.complete.obs"), AZD6244=cor(Y,mek.ActArea[rownames(Y),2],method="spearman",use="pairwise.complete.obs")),method="jitter",vertical=TRUE,add=TRUE,col="royalblue",pch=20)
 abline(h=c(0,.2,.4,.6,.8,1),lty=2)
 
 # #######################################################################
