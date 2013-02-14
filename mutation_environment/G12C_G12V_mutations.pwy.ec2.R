@@ -62,7 +62,7 @@ test.mut.pathways <- function(MUTtbl, gsets, classFactor, countThreshold=1){
   
   sapply(gsets, function(gsetIdxs){
     if(length(gsetIdxs) < 10){ return (NA)}
-    cs <- colSums(t(t(MUTtbl[gsetIdxs,])*sample.mut))
+    cs <- colSums(t(t(MUTtbl[gsetIdxs,])*sample.weight)*freq.weight)
     #stat <- factor(cs >= countThreshold )
     abs(mean(cs[classFactor=="G12C"]) - mean(cs[classFactor=="G12V"]))
     #if(length(levels(stat)) < 2){ return(NA) }
@@ -73,19 +73,18 @@ test.mut.pathways <- function(MUTtbl, gsets, classFactor, countThreshold=1){
 
 R<- test.mut.pathways(MUTtbl=tmp, gsets=gsetIdxs, classFactor=f)
 names(R) <- names(gsetIdxs)
-hist(R,breaks=80,main="differences in the mean of the scores for G12C and G12V per pathway",col="orange",xlab="amplitude of the difference in the scores btw G12C and G12V",xlim=c(0,1.5))
+hist(R,breaks=100)
 sort(R,decreasing=TRUE)[1:10]
-#sort(R)[1:10]
 
 # run the permutation test and parallelize it
-n.permut <- 100
+n.permut <- 200
 #R.null <- replicate(n.permut,test.mut.pathways(MUTtbl=tmp, gsets=gsetIdxs, classFactor=factor(factor)[sample(ncol(tmp))]))
 R.null <- mclapply(X= c(1:n.permut), FUN= function(X){ test.mut.pathways(MUTtbl=tmp, gsets=gsetIdxs, classFactor=factor(factor)[sample(ncol(tmp))])} , mc.cores = 5,mc.set.seed=TRUE)
 tmp.obj <- c()
 R.null <- sapply(c(1:length(R.null)),function(x){ tmpo <- cbind(tmp.obj,R.null[[x]])})
 epval <- sapply(c(1:length(R)),function(x){sum(R.null[x,]<=R[x])/n.permut})
 names(epval) <- names(R)
-sort(epval)[1:30]
+sort(epval)[1:20]
 
 tmp.name <- names(R.null[[1]])
 rownames(R.null) <- tmp.name
