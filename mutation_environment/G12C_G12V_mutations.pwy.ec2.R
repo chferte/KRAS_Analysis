@@ -20,10 +20,23 @@ luad_mut <- assign(names(luad_all)[2],luad_all[[2]])
 luad_kras <- assign(names(luad_all)[3],luad_all[[3]])
 
 # compute the distribution of the gene mutations per gene in order to weight the importance of each gene
-distri.mut <-apply(luad_mut,1,sum)
-hist(distri.mut,breaks=200, main="distribution of the number of mutations per gene \n in the luad population (n=401)",xlab="number of times a gene is mutated", col="gray60")
-freq.weight <- 1/distri.mut
+distri.mut <-apply(luad_mut,1,sum)/ncol(luad_mut)
+hist(distri.mut,breaks=200, main="distribution of the number of mutations per gene \n in the luad population (n=401)",xlab="number of times a gene is mutated", col="orange")
+freq.weight <- log(1/distri.mut)
 hist(freq.weight,breaks=80, main="distribution of the weights across all genes \n (weights are ponderated on the frequency  \nof the mutations per gene in the entire luad population)",col="gray60")
+
+# adjust for the numbe of mutations per Mb / per sample
+sample.mut <- colSums(luad_mut)*1e+06/nrow(luad_mut)
+plot(sort(sample.mut))
+plot(sort(log10(sample.mut),decreasing=TRUE),ylab="overall rate of mutations (log10 number per Mb)",main="overall mutation rate per sample",xlab="n = 401 samples",pch=20)
+
+boxplot(log10(sample.mut)~luad_kras,las=2,ylab="overall rate of mutations (log10 number per Mb)",main="overall mutation rate per KRAS mutation")
+stripchart(log10(sample.mut)~luad_kras,col="aquamarine4",add=TRUE,method="jitter",vertical=TRUE,pch=20)
+
+hist(log10(sample.mut), breaks=100,col="orange",xlab="% mutation per sample",main="distribution of the overall mutation rate per sample")
+
+sample.weight <- 1/log10(sample.mut)
+plot(sort(sample.weight))
 
 mask <- luad_kras=="G12C" | luad_kras=="G12V"
 tmp <- luad_mut[, mask]
@@ -32,8 +45,6 @@ tmp <- tmp[-which(rownames(tmp)=="KRAS"),]
 factor <- rep("G12C", ncol(tmp))
 factor[colnames(tmp) %in% names(luad_kras)[luad_kras %in% "G12V"]] <- "G12V"
 f <- factor(factor)
-
-
 
 
 # load the function to convert any gene set into the gene ids of the genes comprised in this gene set
@@ -51,9 +62,9 @@ test.mut.pathways <- function(MUTtbl, gsets, classFactor, countThreshold=1){
   
   sapply(gsets, function(gsetIdxs){
     if(length(gsetIdxs) < 10){ return (NA)}
-    cs <- colSums(MUTtbl[gsetIdxs,]*freq.weight[gsetIdxs])
+    cs <- colSums(t(t(MUTtbl[gsetIdxs,])*sample.mut))
     #stat <- factor(cs >= countThreshold )
-    #abs(mean(cs[classFactor=="G12C"]) - mean(cs[classFactor=="G12V"]))
+    abs(mean(cs[classFactor=="G12C"]) - mean(cs[classFactor=="G12V"]))
     #if(length(levels(stat)) < 2){ return(NA) }
     #fisher.test(stat,classFactor,alternative="less")$p.value
     #wilcox.test(cs ~ classFactor)$p.value
@@ -68,15 +79,15 @@ sort(R,decreasing=TRUE)[1:10]
 
 # run the permutation test and parallelize it
 n.permut <- 100
-R.null <- replicate(n.permut,test.mut.pathways(MUTtbl=tmp, gsets=gsetIdxs, classFactor=factor(factor)[sample(ncol(tmp))]))
-#R.null <- mclapply(X= c(1:n.permut), FUN= function(X){ test.mut.pathways(MUTtbl=tmp, gsets=gsetIdxs[restricted.pwy], classFactor=factor(factor)[sample(ncol(tmp))])} , mc.cores = 5,mc.set.seed=TRUE)
-epval <- sapply(c(1:length(R)),function(x){sum(R.null[x,]<R[x])/n.permut})
-names(epval) <- names(R)
-sort(epval)[1:10]
-
+#R.null <- replicate(n.permut,test.mut.pathways(MUTtbl=tmp, gsets=gsetIdxs, classFactor=factor(factor)[sample(ncol(tmp))]))
+R.null <- mclapply(X= c(1:n.permut), FUN= function(X){ test.mut.pathways(MUTtbl=tmp, gsets=gsetIdxs, classFactor=factor(factor)[sample(ncol(tmp))])} , mc.cores = 5,mc.set.seed=TRUE)
 tmp.obj <- c()
-tmp.name <- names(R.null[[1]])
 R.null <- sapply(c(1:length(R.null)),function(x){ tmpo <- cbind(tmp.obj,R.null[[x]])})
+epval <- sapply(c(1:length(R)),function(x){sum(R.null[x,]<=R[x])/n.permut})
+names(epval) <- names(R)
+sort(epval)[1:30]
+
+tmp.name <- names(R.null[[1]])
 rownames(R.null) <- tmp.name
 rm(tmp.obj,tmp.name)
 new.permuted.pwy <- sapply(names(R[which(!is.na(R))]),function(x){length(which(R.null[x,]<=R[x]))/n.permut})
