@@ -156,16 +156,13 @@ global.matrix <- rbind(ccle_exp,ccle_cnv,ccle_mut)
 # add non penalization on the eigengenes 
 eigengenes <- t(eigengenes[colnames(global.matrix),c(1:10)])
 
-global.matrix <- rbind(global.matrix,eigengenes[1,])
+global.matrix <- rbind(global.matrix,eigengenes)
 
-rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""),paste(rownames(ccle_cnv),"_cnv",sep=""),paste(rownames(ccle_mut),"_mut",sep=""),"PC1")
-pen <- c(rep(1,times=nrow(global.matrix)-1),0)
+rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""),paste(rownames(ccle_cnv),"_cnv",sep=""),paste(rownames(ccle_mut),"_mut",sep=""),paste("PC",c(1:10),sep=""))
+
 
 N=100
-#selected <- c()
 models <- 0
-
-
 yhat.all <- c()
 yhat.breast <- c()
 yhat.nsclc <- c()
@@ -173,7 +170,7 @@ yhat.crc <- c()
 yhat.glioma <- c()
 yhat.melanoma <- c()
 yhat.hemal  <- c()
-
+selected <- c()
 i <- 0
 while(models<N)
 {
@@ -182,8 +179,8 @@ while(models<N)
   val <-mek.cells[-which(mek.cells %in% train)]
   vec.train <-apply(ccle_drug[train,mek.inhib],1,mean)
   cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1)
-  fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se,penalty.factor=pen)
-
+  fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se)
+  selected <- c(selected,list(fit$beta))
   yhat.all <- c(yhat.all,list(predict(fit, t(global.matrix[,val]))))
   yhat.breast <- c(yhat.breast,list(predict(fit,t(global.matrix[,breast.mek.cells[-which(breast.mek.cells %in% train)]]))))
   yhat.nsclc <- c(yhat.nsclc,list(predict(fit,t(global.matrix[,nsclc.mek.cells[-which(nsclc.mek.cells %in% train)]]))))
@@ -197,6 +194,19 @@ while(models<N)
   models <- length(yhat.all)
   }  
 
+## see what is retained in the models
+abc <- matrix(NA,ncol=length(selected),nrow=nrow(global.matrix))
+rownames(abc) <- rownames(global.matrix)
+for(i in c(1:length(selected)))
+{  abc[,i]<- as.numeric(selected[[i]])  
+}
+
+par(mfrow=c(1,1))
+abc[abc!=0] <-1 
+hist(log10(rowSums(abs(abc))),breaks=50,col="red")
+h <- rowSums(abs(abc))
+sort(h,decreasing=TRUE)[1:100]
+which(h>quantile(h,probs=.99))
 ###### SPEARMAN ###########
 par(mfrow=c(2,4),oma=c(0,0,6,0))
 method.cor <- "spearman"
