@@ -105,7 +105,13 @@ mek.cells <- rownames(ccle_drug)[-unique(c(which(is.na(ccle_drug[,mek.inhib[1]])
 
 # identify the ActArea of the mek inhibs within the cells
 mek.ActArea <- ccle_drug[mek.cells,mek.inhib]
-  
+
+# reduce the matrices to the mek.cells
+ccle_exp <- ccle_exp[,mek.cells]
+ccle_cnv <- ccle_cnv[,mek.cells]
+ccle_mut <- ccle_mut[,mek.cells]
+ccle_drug <- ccle_drug[mek.cells,]
+
 # assess if there is any signal in the differential expression
 par(mfrow=c(2,2),oma=c(0,0,6,0))
 fit <- eBayes(lmFit(ccle_exp[,mek.cells],model.matrix(~mek.ActArea[,1])))
@@ -138,7 +144,7 @@ crc.mek.cells <- carcinoma.mek.cells[grep(pattern="LARGE_INTESTINE",x=carcinoma.
 breast.mek.cells <- carcinoma.mek.cells[grep(pattern="BREAST",x=carcinoma.mek.cells)]
 melanoma.mek.cells <-  intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology =="malignant_melanoma"])
 glioma.mek.cells <-  intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology =="glioma"])
-heMal.mek.cells <- intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology %in% c("haematopoietic_neoplasm","lymphoid_neoplasm")])
+hemal.mek.cells <- intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology %in% c("haematopoietic_neoplasm","lymphoid_neoplasm")])
 
 #############################
 # predictive modeling
@@ -150,96 +156,106 @@ global.matrix <- rbind(ccle_exp,ccle_cnv,ccle_mut)
 #global.matrix <- rbind(global.matrix,eigengenes)
 rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""),paste(rownames(ccle_cnv),"_cnv",sep=""),paste(rownames(ccle_mut),"_mut",sep=""))
 
-selected <- c()
-k <- c()
-j <- c()
+N=50
+#selected <- c()
+models <- 0
+
+
+yhat.all <- c()
+yhat.breast <- c()
+yhat.nsclc <- c()
+yhat.crc <- c()
+yhat.glioma <- c()
+yhat.melanoma <- c()
+yhat.hemal  <- c()
+
 i <- 0
-for(i in c(1:50))
+while(models<N)
 {
   par(mfrow=c(1,1))
-yhat <- c()
-train <- sample(mek.cells,replace=TRUE)
+  train <- sample(mek.cells,replace=TRUE)
   val <-mek.cells[-which(mek.cells %in% train)]
-trainex <- global.matrix[,train]
+
 #pen <- c(rep(1,times=dim(trainex)[1]-1),0)
-vec.train <-apply(ccle_drug[train,mek.inhib],1,mean)
-cv.fit <- cv.glmnet(t(trainex), y=vec.train,nfolds=3, alpha=.1)
-fit <- glmnet(x=t(trainex),y=vec.train,alpha=1,lambda=cv.fit$lambda.1se)
-validex <- global.matrix[,val]
-  rownames(validex) <- rownames(trainex)
-yhat <- predict(fit, t(validex))
-  selected <- cbind(selected,as.numeric(fit$beta))
-j <- c(j,cor(yhat,mek.ActArea[rownames(yhat),1],method="spearman",use="pairwise.complete.obs"))
-k <- c(k,cor(yhat,mek.ActArea[rownames(yhat),2],method="spearman",use="pairwise.complete.obs"))
-print(i)
-}
-boxplot(list(PD0325901=j,AZD6244=k), main="Correlation between models and true ActArea of Mek inhibitors \ training in all cell lines (n=444) and validated in the cell lines not used for training",ylab="Spearman rho",ylim=c(0,1))
-stripchart(list(PD0325901=j,AZD6244=k),vertical=TRUE,method="jitter",add=TRUE,col="aquamarine4",pch=20)
+  vec.train <-apply(ccle_drug[train,mek.inhib],1,mean)
+  cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1)
+  fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se)
+
+  yhat.all <- c(yhat.all,list(predict(fit, t(global.matrix[,val]))))
+  yhat.breast <- c(yhat.breast,list(predict(fit,t(global.matrix[,breast.mek.cells[-which(breast.mek.cells %in% train)]]))))
+  yhat.nsclc <- c(yhat.nsclc,list(predict(fit,t(global.matrix[,nsclc.mek.cells[-which(nsclc.mek.cells %in% train)]]))))
+  yhat.crc <- c(yhat.crc,list(predict(fit,t(global.matrix[,crc.mek.cells[-which(crc.mek.cells %in% train)]]))))
+  yhat.glioma <- c(yhat.glioma,list(predict(fit,t(global.matrix[,glioma.mek.cells[-which(glioma.mek.cells %in% train)]]))))
+  yhat.melanoma <- c(yhat.melanoma,list(predict(fit,t(global.matrix[,melanoma.mek.cells[-which(melanoma.mek.cells %in% train)]]))))
+  yhat.hemal <- c(yhat.hemal,list(predict(fit,t(global.matrix[,hemal.mek.cells[-which(hemal.mek.cells %in% train)]]))))
+ 
+  i=1+i
+  print(i)
+  models <- length(yhat.all)
+  }  
 
 
 
 
-rownames(selected) <- rownames(fit$beta)
 
 
-s <- selected
-s <- apply(abs(s),1,sum)
-names(s) <- rownames(selected)
-plot(sort(s))
-sort(s,decreasing=TRUE)[1:20]
-top1 <- names(sort(s,decreasing=TRUE)[1:3])
+  #selected <- cbind(selected,as.numeric(fit$beta))
+All1 <- c(All1,cor(yhat.all,mek.ActArea[rownames(yhat.all),1],method="pearson",use="pairwise.complete.obs"))
+All2 <- c(All2,cor(yhat.all,mek.ActArea[rownames(yhat.all),2],method="pearson",use="pairwise.complete.obs"))
 
-####################################################################################################
-# tests RF
-####################################################################################################
+  breast1 <- c(breast1,cor(yhat.breast,mek.ActArea[rownames(yhat.breast),1],method="pearson",use="pairwise.complete.obs"))
+  breast2 <- c(breast2,cor(yhat.breast,mek.ActArea[rownames(yhat.breast),2],method="pearson",use="pairwise.complete.obs"))
+  
+  nsclc1 <- c(nsclc1,cor(yhat.nsclc,mek.ActArea[rownames(yhat.nsclc),1],method="pearson",use="pairwise.complete.obs"))
+  nsclc2 <- c(nsclc2,cor(yhat.nsclc,mek.ActArea[rownames(yhat.nsclc),2],method="pearson",use="pairwise.complete.obs"))
+  
+  crc1 <- c(crc1,cor(yhat.crc,mek.ActArea[rownames(yhat.crc),1],method="pearson",use="pairwise.complete.obs"))
+  crc2 <- c(crc2,cor(yhat.crc,mek.ActArea[rownames(yhat.crc),2],method="pearson",use="pairwise.complete.obs"))
+  
+  glioma1 <- c(glioma1,cor(yhat.glioma,mek.ActArea[rownames(yhat.glioma),1],method="pearson",use="pairwise.complete.obs"))
+  glioma2 <- c(glioma2,cor(yhat.glioma,mek.ActArea[rownames(yhat.glioma),2],method="pearson",use="pairwise.complete.obs"))
+  
+  hemal1 <- c(hemal1,cor(yhat.hemal,mek.ActArea[rownames(yhat.hemal),1],method="pearson",use="pairwise.complete.obs"))
+  hemal2 <- c(hemal2,cor(yhat.hemal,mek.ActArea[rownames(yhat.hemal),2],method="pearson",use="pairwise.complete.obs"))
+  
+  melanoma1 <- c(melanoma1,cor(yhat.melanoma,mek.ActArea[rownames(yhat.melanoma),1],method="pearson",use="pairwise.complete.obs"))
+  melanoma2 <- c(melanoma2,cor(yhat.melanoma,mek.ActArea[rownames(yhat.melanoma),2],method="pearson",use="pairwise.complete.obs"))
+  
 
-library(randomForest)
-# let's find the optimal value of mtry
-a <- tuneRF(x=t(trainex), y=vec.train, stepFactor=1.5, doBest=TRUE, trace=TRUE, ntreeTry=200,type="regression")
+#}
 
-# run the model with this mtry value
-fitRF <- randomForest(x=t(trainex), y=vec.train, mtry=a$mtry,do.trace=10, ntree=200, importance=TRUE,type="regression")
-yhatRF <- predict(object=fitRF, newdata=t(validex),type="response")
 
-cor(yhatRF,mek.ActArea[names(yhatRF),1],method="spearman",use="pairwise.complete.obs")
-cor(yhatRF,mek.ActArea[names(yhatRF),2],method="spearman",use="pairwise.complete.obs")
+All1 <- c()
+All2 <- c()
 
-varImpPlot(fitRF,n.var=10,sort=TRUE)
+breast1 <- c()
+nsclc1 <- c()
+crc1 <- c()
+glioma1 <- c()
+hemal1 <- c()
+melanoma1 <- c()
 
-top2 <- names(sort(fitRF$importance[,1],decreasing=TRUE)[1:3])
+breast2 <- c()
+nsclc2 <- c()
+crc2 <- c()
+glioma2 <- c()
+hemal2 <- c()
+melanoma2 <- c()
 
-####################################################################################################
-# linear model based on the top genes
-####################################################################################################
+# display TALL VALL
+boxplot(list(PD0325901=All1,AZD6244=All2), 
+        main="Performance of  bootstrapped models predicting \nthe sensitivity to Mek inhibitors (assessed by ActArea) \ntraining in all cell lines, validated in all cell lines not used for training",
+        ylab="Pearson r",ylim=c(0,1),outline=FALSE)
+stripchart(list(PD0325901=All1,AZD6244=All2),vertical=TRUE,method="jitter",add=TRUE,col="aquamarine4",pch=20)
+abline(h=seq(0,1,.1),lty=2)
 
-top <- c(top1[1:2],top2[1:2])
-top <- top1[1:3]
+# display TALL Breast
+boxplot(list(PD0325901=All1,AZD6244=All2), 
+        main="Performance of  bootstrapped models predicting \nthe sensitivity to Mek inhibitors (assessed by ActArea) \ntraining in all cell lines, validated in all cell lines not used for training",
+        ylab="Pearson r",ylim=c(0,1),outline=FALSE)
+stripchart(list(PD0325901=All1,AZD6244=All2),vertical=TRUE,method="jitter",add=TRUE,col="aquamarine4",pch=20)
+abline(h=seq(0,1,.1),lty=2)
 
-a <- c()
-b <- c()
-for(i in c(1:50))
-{
-train1 <- sample(nsclc.mek.cells,size=36,replace=FALSE)
-trainex1 <- rbind(ccle_exp[,train1],ccle_cnv[,train1],ccle_mut[,train1],cell.type.vec[train1])
-rownames(trainex1) <- c(paste(rownames(ccle_exp),"_exp",sep=""),paste(rownames(ccle_cnv),"_cnv",sep=""),paste(rownames(ccle_mut),"_mut",sep=""),"cell.type.vec")
-val1 <- nsclc.mek.cells[-which(nsclc.mek.cells %in% train1)]
-validex1 <- rbind(ccle_exp[,val1],ccle_cnv[,val1],ccle_mut[,val1],cell.type.vec[val1])
-rownames(validex1) <- rownames(trainex1)
-dat1 <- trainex1[top,]
-dat1 <- rbind(dat1,vec.train[colnames(dat1)])
-dat1 <- as.data.frame(t(dat1))
-colnames(dat1) <- c(top,"ActArea.train")
-fit1 <- lm(ActArea.train ~ LRAT_exp + OSTalpha_exp + PAQR5_exp,data=dat1)
-yhat1 <- predict(fit1, as.data.frame(t(validex1[top,])),type="response")
-a <- c(a,cor(yhat1,mek.ActArea[names(yhat1),1],method="spearman",use="pairwise.complete.obs"))
-b <- c(b,cor(yhat1,mek.ActArea[names(yhat1),2],method="spearman",use="pairwise.complete.obs"))
-print(i)
-}
-boxplot(list(PD0325901=a,AZD6244=b), main="meki prediction in nsclc using top genes",ylab="spearman correlation with ActArea",ylim=c(0,1))
-stripchart(list(PD0325901=a,AZD6244=b),vertical=TRUE,method="jitter",add=TRUE,col="aquamarine4",pch=20)
-abline(h=seq(from=0,to=1,by=.1),lty=2)
-fit1$effects
-summary(fit1)
 
 ###################################################################################################################
 # train our predictive model of MEK response in the carcinoma ccle but half of the lung
@@ -257,7 +273,7 @@ nsclc.mek.cells <- intersect(lung.mek.cells,ccle_info$CCLE.name[ ccle_info$Hist.
 
 par(mfrow=c(1,1))
 require(glmnet)
-N <- 5
+N <- 50
 fit <- c()
 selected <- c()
 yhat <- c()
