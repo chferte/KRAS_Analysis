@@ -156,7 +156,7 @@ global.matrix <- rbind(ccle_exp,ccle_cnv,ccle_mut)
 #global.matrix <- rbind(global.matrix,eigengenes)
 rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""),paste(rownames(ccle_cnv),"_cnv",sep=""),paste(rownames(ccle_mut),"_mut",sep=""))
 
-N=50
+N=100
 #selected <- c()
 models <- 0
 
@@ -194,141 +194,14 @@ while(models<N)
   models <- length(yhat.all)
   }  
 
+###### SPEARMAN ###########
+par(mfrow=c(2,4),oma=c(0,0,6,0))
+method.cor <- "spearman"
+source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/Mek_performance.R")
+title("performance of 100 bootstrapped models\npredicting sensitivity to MEK inhibitors (as assessed by ActArea)\nTraining in All cell lines,Not adjusted on the eigengenes",outer=TRUE)
 
-
-
-
-
-  #selected <- cbind(selected,as.numeric(fit$beta))
-All1 <- c(All1,cor(yhat.all,mek.ActArea[rownames(yhat.all),1],method="pearson",use="pairwise.complete.obs"))
-All2 <- c(All2,cor(yhat.all,mek.ActArea[rownames(yhat.all),2],method="pearson",use="pairwise.complete.obs"))
-
-  breast1 <- c(breast1,cor(yhat.breast,mek.ActArea[rownames(yhat.breast),1],method="pearson",use="pairwise.complete.obs"))
-  breast2 <- c(breast2,cor(yhat.breast,mek.ActArea[rownames(yhat.breast),2],method="pearson",use="pairwise.complete.obs"))
-  
-  nsclc1 <- c(nsclc1,cor(yhat.nsclc,mek.ActArea[rownames(yhat.nsclc),1],method="pearson",use="pairwise.complete.obs"))
-  nsclc2 <- c(nsclc2,cor(yhat.nsclc,mek.ActArea[rownames(yhat.nsclc),2],method="pearson",use="pairwise.complete.obs"))
-  
-  crc1 <- c(crc1,cor(yhat.crc,mek.ActArea[rownames(yhat.crc),1],method="pearson",use="pairwise.complete.obs"))
-  crc2 <- c(crc2,cor(yhat.crc,mek.ActArea[rownames(yhat.crc),2],method="pearson",use="pairwise.complete.obs"))
-  
-  glioma1 <- c(glioma1,cor(yhat.glioma,mek.ActArea[rownames(yhat.glioma),1],method="pearson",use="pairwise.complete.obs"))
-  glioma2 <- c(glioma2,cor(yhat.glioma,mek.ActArea[rownames(yhat.glioma),2],method="pearson",use="pairwise.complete.obs"))
-  
-  hemal1 <- c(hemal1,cor(yhat.hemal,mek.ActArea[rownames(yhat.hemal),1],method="pearson",use="pairwise.complete.obs"))
-  hemal2 <- c(hemal2,cor(yhat.hemal,mek.ActArea[rownames(yhat.hemal),2],method="pearson",use="pairwise.complete.obs"))
-  
-  melanoma1 <- c(melanoma1,cor(yhat.melanoma,mek.ActArea[rownames(yhat.melanoma),1],method="pearson",use="pairwise.complete.obs"))
-  melanoma2 <- c(melanoma2,cor(yhat.melanoma,mek.ActArea[rownames(yhat.melanoma),2],method="pearson",use="pairwise.complete.obs"))
-  
-
-#}
-
-
-All1 <- c()
-All2 <- c()
-
-breast1 <- c()
-nsclc1 <- c()
-crc1 <- c()
-glioma1 <- c()
-hemal1 <- c()
-melanoma1 <- c()
-
-breast2 <- c()
-nsclc2 <- c()
-crc2 <- c()
-glioma2 <- c()
-hemal2 <- c()
-melanoma2 <- c()
-
-# display TALL VALL
-boxplot(list(PD0325901=All1,AZD6244=All2), 
-        main="Performance of  bootstrapped models predicting \nthe sensitivity to Mek inhibitors (assessed by ActArea) \ntraining in all cell lines, validated in all cell lines not used for training",
-        ylab="Pearson r",ylim=c(0,1),outline=FALSE)
-stripchart(list(PD0325901=All1,AZD6244=All2),vertical=TRUE,method="jitter",add=TRUE,col="aquamarine4",pch=20)
-abline(h=seq(0,1,.1),lty=2)
-
-# display TALL Breast
-boxplot(list(PD0325901=All1,AZD6244=All2), 
-        main="Performance of  bootstrapped models predicting \nthe sensitivity to Mek inhibitors (assessed by ActArea) \ntraining in all cell lines, validated in all cell lines not used for training",
-        ylab="Pearson r",ylim=c(0,1),outline=FALSE)
-stripchart(list(PD0325901=All1,AZD6244=All2),vertical=TRUE,method="jitter",add=TRUE,col="aquamarine4",pch=20)
-abline(h=seq(0,1,.1),lty=2)
-
-
-###################################################################################################################
-# train our predictive model of MEK response in the carcinoma ccle but half of the lung
-# using a penalized regression approach  
-# with alpha=.1 (more ridge) and determine lambda using nfolds= 5
-# the robustness of the model is increased by boostrapping (n=100)
-# validate each model in the rest of the lung
-###################################################################################################################
-
-# restrict to the carcinoma only
-carcinoma.mek.cells <-  intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology =="carcinoma"])
-lung.mek.cells <- carcinoma.mek.cells[grep(pattern="LUNG",x=carcinoma.mek.cells)]
-nsclc.mek.cells <- intersect(lung.mek.cells,ccle_info$CCLE.name[ ccle_info$Hist.Subtype1 !="small_cell_carcinoma"])
-
-
-par(mfrow=c(1,1))
-require(glmnet)
-N <- 50
-fit <- c()
-selected <- c()
-yhat <- c()
-models <- 0
-i <- 0
-while(models<N)
-{
-  
-  val <- sample(x=nsclc.mek.cells,size=length(nsclc.mek.cells)/2,replace=FALSE)
-  train <- carcinoma.mek.cells[-which(carcinoma.mek.cells %in% val)]
-  trainex <- rbind(ccle_exp[,train],ccle_cnv[,train])
-  vec.train <- apply(ccle_drug[train,mek.inhib],1,mean)
-  cv.fit <- cv.glmnet(t(trainex), y=vec.train,nfolds=5, alpha=.6)
-  fit <- glmnet(x=t(trainex),y=vec.train,alpha=.6,lambda=cv.fit$lambda.1se)
-  if(length(which(abs(as.numeric(fit$beta))> 10^-5))>10)
-  {
-    i=i+1
-    print(i)
-    selected <- cbind(selected , as.numeric(fit$beta))
-    validex <- rbind(ccle_exp[,val],ccle_cnv[,val])
-    yhat <- c(yhat,list(predict(fit, t(validex))))
-    models <- length(yhat)
-  } }
-
-rownames(selected) <- rownames(trainex)
-selected1 <- selected
-
-y <- c()
-for(i in c(1:length(yhat)))
-{  y <- unique(c(y, rownames(yhat[[i]])))}
-
-Y <- matrix(NA,nrow=length(unique(y)),ncol=length(yhat))
-rownames(Y) <- y
-colnames(Y) <- c(1:length(yhat))
-for(i in c(1:length(yhat))){
-  Y[rownames(yhat[[i]]),i] <- yhat[[i]]
-}
-
-par(mfrow=c(1,1))
-boxplot(list(PD0325901=cor(Y,mek.ActArea[rownames(Y),1],method="spearman",use="pairwise.complete.obs"), AZD6244=cor(Y,mek.ActArea[rownames(Y),2],method="spearman",use="pairwise.complete.obs")),outline=FALSE,ylim=c(0,1),cex.axis=.7)
-stripchart(list(PD0325901=cor(Y,mek.ActArea[rownames(Y),1],method="spearman",use="pairwise.complete.obs"), AZD6244=cor(Y,mek.ActArea[rownames(Y),2],method="spearman",use="pairwise.complete.obs")),method="jitter",vertical=TRUE,add=TRUE,col="aquamarine5",pch=20)
-abline(h=c(0,.2,.4,.6,.8,1),lty=2)
-
-# #######################################################################
-# # extract the biological meaning
-# #######################################################################
-# 
-# mus1 <- selected1
-# mus1[mus1!=0] <- 1
-# x <- rownames(selected1)[which(apply(mus1,1,sum)>quantile(apply(mus1,1,sum),probs=.9))]
-# sort(apply(mus1,1,sum),decreasing=TRUE)[1:50]
-# 
-# mus2 <- selected2
-# mus2[mus2!=0] <- 1
-# y <- rownames(selected2)[which(apply(mus2,1,sum)>quantile(apply(mus2,1,sum),probs=.9))]
-# sort(apply(mus2,1,sum),decreasing=TRUE)[1:50]
-# 
-# intersect(x,y)
+###### PEARSON ###########
+par(mfrow=c(2,4),oma=c(0,0,6,0))
+method.cor <- "pearson"
+source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/Mek_performance.R")
+title("performance of 100 bootstrapped models\npredicting sensitivity to MEK inhibitors (as assessed by ActArea)\nTraining in All cell lines,Not adjusted on the eigengenes",outer=TRUE)
