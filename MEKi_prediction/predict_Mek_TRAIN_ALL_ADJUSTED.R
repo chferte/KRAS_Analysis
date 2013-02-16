@@ -152,6 +152,7 @@ hemal.mek.cells <- intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology %
 
 # first define the global matrix with the eigen genes
 global.matrix <- rbind(ccle_exp,ccle_cnv,ccle_mut)
+#global.matrix <- ccle_mut
 
 # add non penalization on the eigengenes 
 eigengenes <- t(eigengenes[colnames(global.matrix),c(1:10)])
@@ -159,9 +160,9 @@ eigengenes <- t(eigengenes[colnames(global.matrix),c(1:10)])
 global.matrix <- rbind(global.matrix,eigengenes)
 
 rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""),paste(rownames(ccle_cnv),"_cnv",sep=""),paste(rownames(ccle_mut),"_mut",sep=""),paste("PC",c(1:10),sep=""))
+#rownames(global.matrix) <- c(paste(rownames(ccle_mut),"_mut",sep=""),paste("PC",c(1:10),sep=""))
 
-
-N=100
+N=200
 models <- 0
 yhat.all <- c()
 yhat.breast <- c()
@@ -194,7 +195,10 @@ while(models<N)
   models <- length(yhat.all)
   }  
 
-## see what is retained in the models
+#################################################################################################################
+# explore what is retained in the models
+#################################################################################################################
+
 abc <- matrix(NA,ncol=length(selected),nrow=nrow(global.matrix))
 rownames(abc) <- rownames(global.matrix)
 for(i in c(1:length(selected)))
@@ -207,6 +211,7 @@ hist(log10(rowSums(abs(abc))),breaks=50,col="red")
 h <- rowSums(abs(abc))
 sort(h,decreasing=TRUE)[1:100]
 which(h>quantile(h,probs=.99))
+
 ###### SPEARMAN ###########
 par(mfrow=c(2,4),oma=c(0,0,6,0))
 method.cor <- "spearman"

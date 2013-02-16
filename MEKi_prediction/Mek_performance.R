@@ -14,7 +14,6 @@ for(i in c(1:length(yhat.all)))
   abc[rownames(yhat.all[[i]]),i]<- yhat.all[[i]]  
 }
 
-sum(abc[c(29934:29943),])
 
 All1 <- cor(abc,mek.ActArea[rownames(abc),1],method=method.cor,use="pairwise.complete.obs")
 All2 <- cor(abc,mek.ActArea[rownames(abc),2],method=method.cor,use="pairwise.complete.obs")
