@@ -155,14 +155,14 @@ global.matrix <- rbind(ccle_exp,ccle_cnv,ccle_mut)
 #global.matrix <- ccle_mut
 
 # add non penalization on the eigengenes 
-eigengenes <- t(eigengenes[colnames(global.matrix),c(1:10)])
+eigengenes <- t(eigengenes[colnames(global.matrix),c(1:30)])
 
 global.matrix <- rbind(global.matrix,eigengenes)
 
-rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""),paste(rownames(ccle_cnv),"_cnv",sep=""),paste(rownames(ccle_mut),"_mut",sep=""),paste("PC",c(1:10),sep=""))
+rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""),paste(rownames(ccle_cnv),"_cnv",sep=""),paste(rownames(ccle_mut),"_mut",sep=""),paste("PC",c(1:30),sep=""))
 #rownames(global.matrix) <- c(paste(rownames(ccle_mut),"_mut",sep=""),paste("PC",c(1:10),sep=""))
 
-N=200
+N=100
 models <- 0
 yhat.all <- c()
 yhat.breast <- c()
@@ -205,12 +205,24 @@ for(i in c(1:length(selected)))
 {  abc[,i]<- as.numeric(selected[[i]])  
 }
 
-par(mfrow=c(1,1))
-abc[abc!=0] <-1 
-hist(log10(rowSums(abs(abc))),breaks=50,col="red")
-h <- rowSums(abs(abc))
-sort(h,decreasing=TRUE)[1:100]
-which(h>quantile(h,probs=.99))
+# fit.betas.mek.models <- selected
+# 
+# # store it into synapse
+# fits <- Data(list(name = "fitbetas_mek_models", parentId = 'syn1670945'))
+# fits<- createEntity(fits)
+# 
+# # add object into the data entity
+# fits <- addObject(fits,fit.betas.mek.models)
+# 
+# # push the raw data into this entity
+# fits <- storeEntity(entity=fits)
+# 
+# par(mfrow=c(1,1))
+# abc[abc!=0] <-1 
+# hist(log10(rowSums(abs(abc))),breaks=50,col="red")
+# h <- rowSums(abs(abc))
+# sort(h,decreasing=TRUE)[1:100]
+# which(h>quantile(h,probs=.99))
 
 ###### SPEARMAN ###########
 par(mfrow=c(2,4),oma=c(0,0,6,0))
@@ -223,5 +235,40 @@ par(mfrow=c(2,4),oma=c(0,0,6,0))
 method.cor <- "pearson"
 source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/Mek_performance.R")
 title("performance of 100 bootstrapped models\npredicting sensitivity to MEK inhibitors (as assessed by ActArea)\nTraining in All cell lines,ajusted on the 1st Princ. Component",outer=TRUE)
-#
+
+#############################
+# plot the distribution of MEK ActArea
+############################
+
+par(mfrow=c(1,1),oma=c(1,1,1,1))
+plot(density(apply(ccle_drug[mek.cells,mek.inhib],1,mean)),xlim=c(-2,9),main="ALL MEK CELLS",ylim=c(0,1))
+par(mfrow=c(2,3))
+plot(density(apply(ccle_drug[nsclc.mek.cells,mek.inhib],1,mean)),xlim=c(-2,9),main="NSCLC",ylim=c(0,1))
+plot(density(apply(ccle_drug[breast.mek.cells,mek.inhib],1,mean)),xlim=c(-2,9),main="BREAST",ylim=c(0,1))
+plot(density(apply(ccle_drug[crc.mek.cells,mek.inhib],1,mean)),xlim=c(-2,9),main="COLORECTAL",ylim=c(0,1))
+plot(density(apply(ccle_drug[hemal.mek.cells,mek.inhib],1,mean)),xlim=c(-2,9),main="Hematologic\nMalignancies",ylim=c(0,1))
+plot(density(apply(ccle_drug[glioma.mek.cells,mek.inhib],1,mean)),xlim=c(-2,9),main="GLIOMA",ylim=c(0,1))
+plot(density(apply(ccle_drug[melanoma.mek.cells,mek.inhib],1,mean)),xlim=c(-2,9),main="MELANOMA",ylim=c(0,1))
+
+
+# plot the confidence intervall for each IC50 prediction
+
+
+# first plot the density of the IC50
+par(mfrow=c(1,1))
+breast.ic50 <- apply(ccle_drug[breast.mek.cells,mek.inhib],1,mean)
+plot(density(apply(ccle_drug[breast.mek.cells,mek.inhib],1,mean)),
+     xlim=c(-2,6),main="BREAST",ylim=c(0,1))
+
+# then compute the variance of the predictions for each cell lines
+abc <- matrix(NA,ncol=N,nrow=length(breast.mek.cells))
+rownames(abc) <- breast.mek.cells
+for(i in c(1:length(yhat.breast))) { abc[rownames(yhat.breast[[i]]),i]<- yhat.breast[[i]]}
+variance.breast <- apply(abc,1,sd,na.rm=TRUE)
+
+# plot the variance accodring to the 
+tmp <- names(sort(apply(ccle_drug[breast.mek.cells,mek.inhib],1,mean)))
+lines(breast.ic50[tmp],variance.breast[tmp],col="red",type="p",pch=20)
+
+
 

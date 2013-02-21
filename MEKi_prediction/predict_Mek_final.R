@@ -33,10 +33,7 @@ assign(x=names(ccle_drug)[1],ccle_drug[[1]])
 assign(x=names(ccle_drug)[2],ccle_drug[[2]])
 
 # let's use the ActArea as ccle_drug
-plot(ccle_drug_IC50Norm,ccle_drug_ActAreaNorm,xlim=c(0,8),ylim=c(0,8))
-plot(ccle_drug_IC50Norm,1/ccle_drug_ActAreaNorm,xlim=c(0,8),ylim=c(0,8))
-ccle_drug <- ccle_drug_IC50Norm
-
+ccle_drug <- ccle_drug_ActAreaNorm
 
 #modify the ccle_mut into a binary matrix
 ccle_mut[ccle_mut!="0"] <- 1
@@ -60,7 +57,6 @@ rm(tmp)
 global.matrix <- rbind(ccle_exp,ccle_cnv)
 tissue.origin <- as.factor(ccle_info$Site.Primary)
 s <- fast.svd(global.matrix-rowMeans(global.matrix))
-
 par(mfrow=c(1,1))
 
 # percentage variance explained
@@ -76,9 +72,6 @@ legend(0,1,legend=levels(tissue.origin),cex=.8,col=rainbow(24),pch=20,text.width
 eigengenes <- s$v
 rownames(eigengenes) <- colnames(ccle_exp)
 colnames(eigengenes) <- paste("PC_",seq(from=1,to=ncol(eigengenes),by=1),sep="")
-
-# plot the svd for the CNV data
-#s1 <- fast.svd()
 
 #########################################################################################################
 ## feature selection for low variance
@@ -119,26 +112,6 @@ ccle_cnv <- ccle_cnv[,mek.cells]
 ccle_mut <- ccle_mut[,mek.cells]
 ccle_drug <- ccle_drug[mek.cells,]
 
-# assess if there is any signal in the differential expression
-par(mfrow=c(2,2),oma=c(0,0,6,0))
-fit <- eBayes(lmFit(ccle_exp[,mek.cells],model.matrix(~mek.ActArea[,1])))
-hist(fit$p.value[,2],breaks=50, main=paste("gene expr ~",colnames(mek.ActArea)[1]),col="aquamarine4",xlab="p values")
-abline(v=.05,col="red",lty=2,lwd=2)
-table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(ccle_cnv[,mek.cells],model.matrix(~mek.ActArea[,1])))
-hist(fit$p.value[,2],breaks=50, main=paste(" cnv ~",colnames(mek.ActArea)[1]),col="aquamarine4",xlab="p values")
-abline(v=.05,col="red",lty=2,lwd=2)
-table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(ccle_exp[,mek.cells],model.matrix(~mek.ActArea[,2])))
-hist(fit$p.value[,2],breaks=50, main=paste("gene expr ~",colnames(mek.ActArea)[2]),col="aquamarine4",xlab="p values")
-abline(v=.05,col="red",lty=2,lwd=2)
-table(fit$p.value[,2]<.05)
-fit <- eBayes(lmFit(ccle_cnv[,mek.cells],model.matrix(~mek.ActArea[,2])))
-hist(fit$p.value[,2],breaks=50, main=paste(" cnv ~",colnames(mek.ActArea)[2]),col="aquamarine4",xlab="p values")
-abline(v=.05,col="red",lty=2,lwd=2)
-table(fit$p.value[,2]<.05)
-
-title(main=paste("univariate differential gene expression & differential CNV \nfor sensitivity to MEK inhibitors (AZ6244 and PD0325901) \nin the Cancer Cell Line Encyclopedia (n=",length(mek.cells),")",sep=""),outer=TRUE)
 
 ####################################################################################################
 # define the NSCLC Breast Lung Melanoma Glioma & heMal (hematological malignacies) cells
@@ -153,34 +126,25 @@ melanoma.mek.cells <-  intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histolo
 glioma.mek.cells <-  intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology =="glioma"])
 hemal.mek.cells <- intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology %in% c("haematopoietic_neoplasm","lymphoid_neoplasm")])
 
-#############################
-# plot the distribution of MEK ActArea
-############################
-
-par(mfrow=c(1,1),oma=c(1,1,1,1))
-plot(density(apply(ccle_drug[mek.cells,mek.inhib],1,mean)),xlim=c(-2,9),main="ALL MEK CELLS",ylim=c(0,1))
-par(mfrow=c(2,3))
-plot(density(apply(ccle_drug[nsclc.mek.cells,mek.inhib],1,mean)),xlim=c(-2,9),main="NSCLC",ylim=c(0,1))
-plot(density(apply(ccle_drug[breast.mek.cells,mek.inhib],1,mean)),xlim=c(-2,9),main="BREAST",ylim=c(0,1))
-plot(density(apply(ccle_drug[crc.mek.cells,mek.inhib],1,mean)),xlim=c(-2,9),main="COLORECTAL",ylim=c(0,1))
-plot(density(apply(ccle_drug[hemal.mek.cells,mek.inhib],1,mean)),xlim=c(-2,9),main="Hematologic\nMalignancies",ylim=c(0,1))
-plot(density(apply(ccle_drug[glioma.mek.cells,mek.inhib],1,mean)),xlim=c(-2,9),main="GLIOMA",ylim=c(0,1))
-plot(density(apply(ccle_drug[melanoma.mek.cells,mek.inhib],1,mean)),xlim=c(-2,9),main="MELANOMA",ylim=c(0,1))
-
-#############################
+#######################################################
 # predictive modeling
-############################
+# we predict the ic50 
+# training all cells global matrix without eigengenes and with eigengenes in parallel
+#######################################################
 
-# first define the global matrix
+# define globalmatrix (without eigengenes)
 global.matrix <- rbind(ccle_exp,ccle_cnv,ccle_mut)
-#eigengenes <- t(eigengenes[colnames(global.matrix),c(1:10)])
-#global.matrix <- rbind(global.matrix,eigengenes)
 rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""),paste(rownames(ccle_cnv),"_cnv",sep=""),paste(rownames(ccle_mut),"_mut",sep=""))
 
-N=100
-#selected <- c()
-models <- 0
+# define globalmatrix2 (with eigengenes)
+eigengenes <- t(eigengenes[colnames(global.matrix),c(1:30)])
+global.matrix2 <- rbind(global.matrix,eigengenes)
+rownames(global.matrix2) <- c(rownames(global.matrix),paste("PC",c(1:30),sep=""))
 
+
+N=200
+models <- 0
+i <- 0
 
 yhat.all <- c()
 yhat.breast <- c()
@@ -189,19 +153,27 @@ yhat.crc <- c()
 yhat.glioma <- c()
 yhat.melanoma <- c()
 yhat.hemal  <- c()
+selected <- c()
 
-i <- 0
+yhat.all2 <- c()
+yhat.breast2 <- c()
+yhat.nsclc2 <- c()
+yhat.crc2 <- c()
+yhat.glioma2 <- c()
+yhat.melanoma2 <- c()
+yhat.hemal2  <- c()
+selected2 <- c()
+
 while(models<N)
 {
   par(mfrow=c(1,1))
   train <- sample(mek.cells,replace=TRUE)
   val <-mek.cells[-which(mek.cells %in% train)]
-
-#pen <- c(rep(1,times=dim(trainex)[1]-1),0)
   vec.train <-apply(ccle_drug[train,mek.inhib],1,mean)
+  
   cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1)
   fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se)
-
+  selected <- c(selected,list(fit$beta))
   yhat.all <- c(yhat.all,list(predict(fit, t(global.matrix[,val]))))
   yhat.breast <- c(yhat.breast,list(predict(fit,t(global.matrix[,breast.mek.cells[-which(breast.mek.cells %in% train)]]))))
   yhat.nsclc <- c(yhat.nsclc,list(predict(fit,t(global.matrix[,nsclc.mek.cells[-which(nsclc.mek.cells %in% train)]]))))
@@ -210,19 +182,131 @@ while(models<N)
   yhat.melanoma <- c(yhat.melanoma,list(predict(fit,t(global.matrix[,melanoma.mek.cells[-which(melanoma.mek.cells %in% train)]]))))
   yhat.hemal <- c(yhat.hemal,list(predict(fit,t(global.matrix[,hemal.mek.cells[-which(hemal.mek.cells %in% train)]]))))
  
+  cv.fit2 <- cv.glmnet(t(global.matrix2[,train]), y=vec.train,nfolds=3, alpha=.1)
+  fit2 <- glmnet(x=t(global.matrix2[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se)
+  selected2 <- c(selected2,list(fit2$beta))
+  yhat.all2 <- c(yhat.all2,list(predict(fit2, t(global.matrix2[,val]))))
+  yhat.breast2 <- c(yhat.breast2,list(predict(fit2,t(global.matrix2[,breast.mek.cells[-which(breast.mek.cells %in% train)]]))))
+  yhat.nsclc2 <- c(yhat.nsclc2,list(predict(fit2,t(global.matrix2[,nsclc.mek.cells[-which(nsclc.mek.cells %in% train)]]))))
+  yhat.crc2 <- c(yhat.crc2,list(predict(fit2,t(global.matrix2[,crc.mek.cells[-which(crc.mek.cells %in% train)]]))))
+  yhat.glioma2 <- c(yhat.glioma2,list(predict(fit2,t(global.matrix2[,glioma.mek.cells[-which(glioma.mek.cells %in% train)]]))))
+  yhat.melanoma2 <- c(yhat.melanoma2,list(predict(fit2,t(global.matrix2[,melanoma.mek.cells[-which(melanoma.mek.cells %in% train)]]))))
+  yhat.hemal2 <- c(yhat.hemal2,list(predict(fit2,t(global.matrix2[,hemal.mek.cells[-which(hemal.mek.cells %in% train)]]))))
+  
+  
   i=1+i
   print(i)
-  models <- length(yhat.all)
+  models <- length(yhat.all2)
   }  
+
+#################################################################################################################
+# explore what is retained in the models
+#################################################################################################################
+
+# abc <- matrix(NA,ncol=length(selected),nrow=nrow(global.matrix))
+# rownames(abc) <- rownames(global.matrix)
+# for(i in c(1:length(selected)))
+# {  abc[,i]<- as.numeric(selected[[i]])  
+# }
+
+# fit.betas.mek.models <- selected
+# 
+# # store it into synapse
+# fits <- Data(list(name = "fitbetas_mek_models", parentId = 'syn1670945'))
+# fits<- createEntity(fits)
+# 
+# # add object into the data entity
+# fits <- addObject(fits,fit.betas.mek.models)
+# 
+# # push the raw data into this entity
+# fits <- storeEntity(entity=fits)
+# 
+# par(mfrow=c(1,1))
+# abc[abc!=0] <-1 
+# hist(log10(rowSums(abs(abc))),breaks=50,col="red")
+# h <- rowSums(abs(abc))
+# sort(h,decreasing=TRUE)[1:100]
+# which(h>quantile(h,probs=.99))
 
 ###### SPEARMAN ###########
 par(mfrow=c(2,4),oma=c(0,0,6,0))
 method.cor <- "spearman"
+cex=1.5
 source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/Mek_performance.R")
-title("performance of 100 bootstrapped models\npredicting sensitivity to MEK inhibitors (as assessed by ActArea)\nTraining in All cell lines,Not adjusted on the eigengenes",outer=TRUE)
+title(main="Performance of 200 bootstrapped models\npredicting sensitivity to MEK inhibitors\ntraining in all CCLE cell lines",
+      sub="sensitivity was assessed by ActArea",outer=TRUE)
 
 ###### PEARSON ###########
 par(mfrow=c(2,4),oma=c(0,0,6,0))
 method.cor <- "pearson"
+cex=1.5
 source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/Mek_performance.R")
-title("performance of 100 bootstrapped models\npredicting sensitivity to MEK inhibitors (as assessed by ActArea)\nTraining in All cell lines,Not adjusted on the eigengenes",outer=TRUE)
+title(main="Performance of 200 bootstrapped models\npredicting sensitivity to MEK inhibitors\ntraining in CCLE all cell lines",
+      sub="sensitivity was assessed by ActArea",outer=TRUE)
+
+#############################
+# plot the distribution of MEK ActArea
+############################
+
+par(mfrow=c(2,4),oma=c(0,0,6,0))
+plot(density(apply(ccle_drug[mek.cells,mek.inhib],1,mean)),xlim=c(-2,8.5),main="ALL CELLS",ylim=c(0,.8))
+plot(density(apply(ccle_drug[nsclc.mek.cells,mek.inhib],1,mean)),xlim=c(-2,8.5),main="NSCLC",ylim=c(0,.8))
+plot(density(apply(ccle_drug[breast.mek.cells,mek.inhib],1,mean)),xlim=c(-2,8.5),main="BREAST",ylim=c(0,.8))
+plot(density(apply(ccle_drug[crc.mek.cells,mek.inhib],1,mean)),xlim=c(-2,8.5),main="COLORECTAL",ylim=c(0,.8))
+plot(density(apply(ccle_drug[hemal.mek.cells,mek.inhib],1,mean)),xlim=c(-2,8.5),main="Hematologic\nMalignancies",ylim=c(0,.8))
+plot(density(apply(ccle_drug[glioma.mek.cells,mek.inhib],1,mean)),xlim=c(-2,8.5),main="GLIOMA",ylim=c(0,.8))
+plot(density(apply(ccle_drug[melanoma.mek.cells,mek.inhib],1,mean)),xlim=c(-2,8.5),main="MELANOMA",ylim=c(0,.8))
+title(main="Distribution of the sensitivity of cell lines to MEK inhibitors according to tissue type \n(sensitivity assessed by ActArea)",
+      sub="sensitivity was assessed by ActArea",outer=TRUE)
+#############################
+# 
+############################
+par(mfrow=c(1,1),oma=c(1,1,1,1))
+boxplot(apply(ccle_drug[mek.cells,mek.inhib],1,mean),main="ALL MEK CELLS")
+par(mfrow=c(2,3))
+boxplot(apply(ccle_drug[nsclc.mek.cells,mek.inhib],1,mean),main="NSCLC",ylim=c(0,8))
+boxplot(apply(ccle_drug[breast.mek.cells,mek.inhib],1,mean),main="BREAST",ylim=c(0,8))
+boxplot(apply(ccle_drug[crc.mek.cells,mek.inhib],1,mean),main="COLORECTAL",ylim=c(0,8))
+boxplot(apply(ccle_drug[hemal.mek.cells,mek.inhib],1,mean),main="Hematologic\nMalignancies",ylim=c(0,8))
+boxplot(apply(ccle_drug[glioma.mek.cells,mek.inhib],1,mean),main="GLIOMA",ylim=c(0,8))
+boxplot(apply(ccle_drug[melanoma.mek.cells,mek.inhib],1,mean),main="MELANOMA",ylim=c(0,8))
+
+
+############################
+# plot the confidence intervall for each IC50 prediction
+############################
+
+# first plot the density of the IC50
+k <- list(mek.cells,nsclc.mek.cells,breast.mek.cells,crc.mek.cells,hemal.mek.cells,glioma.mek.cells,melanoma.mek.cells)
+yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.glioma,yhat.melanoma)
+names(k) <- c("ALL CELLS","NSCLC","BREAST","COLORECTAL","Hematologic\nMalignancies","GLIOMA","MELANOMA")
+par(mfrow=c(2,4))
+for(i in c(1:length(k)))
+  {
+
+tissue.ic50 <- apply(ccle_drug[k[[i]],mek.inhib],1,mean)
+plot(density(tissue.ic50),xlim=c(-2,6),main=paste(names(k)[i]),ylim=c(0,3.5))
+
+# then create a matrix abc containing all the yhat per cells
+abc <- matrix(NA,ncol=N,nrow=length(k[[i]]))
+rownames(abc) <- k[[i]]
+for(j in c(1:length(yhats[[i]]))) { abc[rownames(yhats[[i]][[j]]),j]<- yhats[[i]][[j]]}
+
+# and compute the rmse for each cell
+RMSE <- c()
+for(n in c(1:length(tissue.ic50))){
+
+  tmp <- sapply(c(1:ncol(abc)),function(x){(tissue.ic50[n]-abc[n,x])^2})
+  RMSE <- c(RMSE,sqrt(mean(tmp,na.rm=TRUE)))
+  }
+names(RMSE) <- k[[i]]
+
+# plot the variance of the predictions accodring to their actual IC50
+# to show that the prediction performance is dependant on the distribution of the model features in our model
+tmp <- names(sort(apply(ccle_drug[k[[i]],mek.inhib],1,mean)))
+lines(tissue.ic50[tmp],RMSE[tmp],col="red",type="p",pch=20)
+q <- loess(RMSE[tmp]~tissue.ic50[tmp])
+lines(q$x,q$fitted,col="blue",lwd=3)
+}
+
+title(main="Distribution of the sensitivity of cell lines to MEK inhibitors according to tissue type \n(sensitivity assessed by ActArea)",,outer=TRUE)

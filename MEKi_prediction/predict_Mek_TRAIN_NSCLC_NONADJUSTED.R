@@ -44,7 +44,7 @@ rm(tmp)
 
 
 #########################################################################################################################################
-# make the data coherent between exp and cnv to ultimately compute the eigengenes vector
+# make the data coherent between exp and cnv to ultimately compute the eigengenes of exp + cnv
 #########################################################################################################################################
 
 tmp <- intersect(colnames(ccle_exp),ccle_info$CCLE.name)
@@ -146,9 +146,14 @@ melanoma.mek.cells <-  intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histolo
 glioma.mek.cells <-  intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology =="glioma"])
 hemal.mek.cells <- intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology %in% c("haematopoietic_neoplasm","lymphoid_neoplasm")])
 
-#############################
-# predictive modeling
-############################
+###################################################
+# 
+###################################################
+
+
+###################################################
+# predictive modeling: predict MEK sensitivity
+###################################################
 
 # first define the global matrix
 global.matrix <- rbind(ccle_exp,ccle_cnv,ccle_mut)
