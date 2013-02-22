@@ -3,7 +3,7 @@
 # Feb 22th, 2013
 
 #############################
-# plot the distribution of MEK ActArea
+# plot the distribution of MEK ActArea (ie: plot the y)
 ############################
 
 par(mfrow=c(2,4),oma=c(0,0,6,0))
@@ -16,6 +16,36 @@ plot(density(apply(ccle_drug[glioma.mek.cells,mek.inhib],1,mean)),xlim=c(-2,8.5)
 plot(density(apply(ccle_drug[melanoma.mek.cells,mek.inhib],1,mean)),xlim=c(-2,8.5),main="MELANOMA",ylim=c(0,.8))
 title(main="Distribution of the sensitivity of cell lines to MEK inhibitors according to tissue type \n(sensitivity assessed by ActArea)",
       sub="sensitivity was assessed by ActArea",outer=TRUE)
+
+#############################
+# plot the distribution of yhats of MEK ActArea (ie: plot the y)
+############################
+
+par(mfrow=c(2,4),oma=c(0,0,4,0))
+
+cells <- list(mek.cells,nsclc.mek.cells,breast.mek.cells,crc.mek.cells,hemal.mek.cells,glioma.mek.cells,melanoma.mek.cells)
+cell.names <- list("ALL","NSCLC","BREAST","CRC","Hematologic\nMalignancies","GLIOMA","MELANOMA")
+yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.glioma,yhat.melanoma)
+
+for(j in c(1:length(cells)))
+  {
+abc <- matrix(NA,nrow=length(cells[[j]]),ncol=N)
+rownames(abc) <- cells[[j]]
+colnames(abc) <- c(1:N)
+for(i in c(1:N)){abc[rownames(yhats[[j]][[i]]),i] <- yhats[[j]][[i]]}
+abc <- apply(abc,1,median,na.rm=TRUE)
+plot(density(abc),xlim=c(-2,5.5),main=paste(cell.names[[j]],"yhats"),ylim=c(0,1.2),lwd=2)
+abline(v=quantile(abc,probs=.8),col="red",lty=2)
+top.predicted.cells <- ifelse(abc>quantile(abc,probs=.8),1,0)
+def <- apply(ccle_drug[cells[[j]],mek.inhib],1,mean)
+top.true.cells <- ifelse(def>quantile(def,probs=.8),1,0)
+cat("predictive performance when fixing a threshold at the 80th quantile\n",paste("for ",cell.names[[j]]),"cell lines")
+print(table(PREDICTED=top.predicted.cells,REALITY=top.true.cells))
+}
+
+title(main="Distribution of the yhats of the MEK inhibitors according to tissue type \n(sensitivity assessed by ActArea)",outer=TRUE)
+
+
 
 #############################
 # same but with boxplots 
