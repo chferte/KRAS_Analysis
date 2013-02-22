@@ -26,8 +26,8 @@ abline(v=quantile(ccle_drug[mek.cells,mek.inhib[2]],probs=.2),col="green")
 # discretise the ActArea
 #############################
 
-a <- ifelse(ccle_drug[mek.cells,mek.inhib[1]]>quantile(ccle_drug[mek.cells,mek.inhib[1]],probs=.7),1,0)
-b <- ifelse(ccle_drug[mek.cells,mek.inhib[2]]>quantile(ccle_drug[mek.cells,mek.inhib[2]],probs=.7),1,0)
+a <- ifelse(ccle_drug[mek.cells,mek.inhib[1]]>quantile(ccle_drug[mek.cells,mek.inhib[1]],probs=.8),1,0)
+b <- ifelse(ccle_drug[mek.cells,mek.inhib[2]]>quantile(ccle_drug[mek.cells,mek.inhib[2]],probs=.8),1,0)
 discrete.mek.response <- ifelse(a==1 & b==1,1,0)
 
 table(discrete.mek.response)
@@ -73,7 +73,8 @@ selected2 <- c()
 while(models<N)
 {
   par(mfrow=c(1,1))
-  train <- c(sample(mek.cells[which(discrete.mek.response==1)],replace=TRUE), sample(mek.cells[which(discrete.mek.response==0)],size=112,replace=TRUE))
+  #train <- c(sample(mek.cells[which(discrete.mek.response==1)],replace=TRUE), sample(mek.cells[which(discrete.mek.response==0)],size=length(which(discrete.mek.response==1)),replace=TRUE))
+  train <- sample(mek.cells,replace=TRUE)
   trainval <-mek.cells[-which(mek.cells %in% train)]
   vec.train <-discrete.mek.response[train]
   
@@ -120,7 +121,8 @@ tmp <- apply(abc,1,median,na.rm=TRUE)
 Pred <- prediction(tmp,discrete.mek.response[nsclc.mek.cells])
 Perf <- performance(prediction.obj=Pred,"tpr","fpr")
 AUC <- performance(prediction.obj=Pred,"auc")
-AUC.nsclc <- c(AUC.nsclc,as.numeric(AUC@y.values)) }
+AUC.nsclc <- as.numeric(AUC@y.values)
+AUC.nsclc
 
 # AUC.crc <- c()
 # for (i in c(1:N)){

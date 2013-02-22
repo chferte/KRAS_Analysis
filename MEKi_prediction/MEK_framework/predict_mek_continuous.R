@@ -2,6 +2,10 @@
 # Sage Bionetworks
 # 14 Feb 2012
 
+#############################
+# load the data
+#############################
+source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_mek_data.R")
 
 #######################################################
 # predictive modeling
@@ -12,14 +16,14 @@
 # define globalmatrix (without eigengenes)
 global.matrix <- rbind(ccle_exp,ccle_cnv,ccle_mut)
 rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""),paste(rownames(ccle_cnv),"_cnv",sep=""),paste(rownames(ccle_mut),"_mut",sep=""))
+# 
+# # define globalmatrix2 (with eigengenes)
+# eigengenes <- t(eigengenes[colnames(global.matrix),c(1:30)])
+# global.matrix2 <- rbind(global.matrix,eigengenes)
+# rownames(global.matrix2) <- c(rownames(global.matrix),paste("PC",c(1:30),sep=""))
+# 
 
-# define globalmatrix2 (with eigengenes)
-eigengenes <- t(eigengenes[colnames(global.matrix),c(1:30)])
-global.matrix2 <- rbind(global.matrix,eigengenes)
-rownames(global.matrix2) <- c(rownames(global.matrix),paste("PC",c(1:30),sep=""))
-
-
-N=200
+N=30
 models <- 0
 i <- 0
 
@@ -32,14 +36,14 @@ yhat.melanoma <- c()
 yhat.hemal  <- c()
 selected <- c()
 
-yhat.all2 <- c()
-yhat.breast2 <- c()
-yhat.nsclc2 <- c()
-yhat.crc2 <- c()
-yhat.glioma2 <- c()
-yhat.melanoma2 <- c()
-yhat.hemal2  <- c()
-selected2 <- c()
+# yhat.all2 <- c()
+# yhat.breast2 <- c()
+# yhat.nsclc2 <- c()
+# yhat.crc2 <- c()
+# yhat.glioma2 <- c()
+# yhat.melanoma2 <- c()
+# yhat.hemal2  <- c()
+# selected2 <- c()
 
 while(models<N)
 {
@@ -59,21 +63,21 @@ while(models<N)
   yhat.melanoma <- c(yhat.melanoma,list(predict(fit,t(global.matrix[,melanoma.mek.cells[-which(melanoma.mek.cells %in% train)]]))))
   yhat.hemal <- c(yhat.hemal,list(predict(fit,t(global.matrix[,hemal.mek.cells[-which(hemal.mek.cells %in% train)]]))))
  
-  cv.fit2 <- cv.glmnet(t(global.matrix2[,train]), y=vec.train,nfolds=3, alpha=.1)
-  fit2 <- glmnet(x=t(global.matrix2[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se)
-  selected2 <- c(selected2,list(fit2$beta))
-  yhat.all2 <- c(yhat.all2,list(predict(fit2, t(global.matrix2[,val]))))
-  yhat.breast2 <- c(yhat.breast2,list(predict(fit2,t(global.matrix2[,breast.mek.cells[-which(breast.mek.cells %in% train)]]))))
-  yhat.nsclc2 <- c(yhat.nsclc2,list(predict(fit2,t(global.matrix2[,nsclc.mek.cells[-which(nsclc.mek.cells %in% train)]]))))
-  yhat.crc2 <- c(yhat.crc2,list(predict(fit2,t(global.matrix2[,crc.mek.cells[-which(crc.mek.cells %in% train)]]))))
-  yhat.glioma2 <- c(yhat.glioma2,list(predict(fit2,t(global.matrix2[,glioma.mek.cells[-which(glioma.mek.cells %in% train)]]))))
-  yhat.melanoma2 <- c(yhat.melanoma2,list(predict(fit2,t(global.matrix2[,melanoma.mek.cells[-which(melanoma.mek.cells %in% train)]]))))
-  yhat.hemal2 <- c(yhat.hemal2,list(predict(fit2,t(global.matrix2[,hemal.mek.cells[-which(hemal.mek.cells %in% train)]]))))
-  
+#   cv.fit2 <- cv.glmnet(t(global.matrix2[,train]), y=vec.train,nfolds=3, alpha=.1)
+#   fit2 <- glmnet(x=t(global.matrix2[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se)
+#   selected2 <- c(selected2,list(fit2$beta))
+#   yhat.all2 <- c(yhat.all2,list(predict(fit2, t(global.matrix2[,val]))))
+#   yhat.breast2 <- c(yhat.breast2,list(predict(fit2,t(global.matrix2[,breast.mek.cells[-which(breast.mek.cells %in% train)]]))))
+#   yhat.nsclc2 <- c(yhat.nsclc2,list(predict(fit2,t(global.matrix2[,nsclc.mek.cells[-which(nsclc.mek.cells %in% train)]]))))
+#   yhat.crc2 <- c(yhat.crc2,list(predict(fit2,t(global.matrix2[,crc.mek.cells[-which(crc.mek.cells %in% train)]]))))
+#   yhat.glioma2 <- c(yhat.glioma2,list(predict(fit2,t(global.matrix2[,glioma.mek.cells[-which(glioma.mek.cells %in% train)]]))))
+#   yhat.melanoma2 <- c(yhat.melanoma2,list(predict(fit2,t(global.matrix2[,melanoma.mek.cells[-which(melanoma.mek.cells %in% train)]]))))
+#   yhat.hemal2 <- c(yhat.hemal2,list(predict(fit2,t(global.matrix2[,hemal.mek.cells[-which(hemal.mek.cells %in% train)]]))))
+#   
   
   i=1+i
   print(i)
-  models <- length(yhat.all2)
+  models <- length(yhat.all)
   }  
 
 #################################################################################################################

@@ -56,22 +56,22 @@ rm(tmp)
 
 global.matrix <- rbind(ccle_exp,ccle_cnv)
 tissue.origin <- as.factor(ccle_info$Site.Primary)
-s <- fast.svd(global.matrix-rowMeans(global.matrix))
-par(mfrow=c(1,1))
-
-# percentage variance explained
-plot(s$d^2/sum(s$d^2),pch=20)
-
-# plot first and second svd
-plot(s$v[,1],s$v[,2],col=rainbow(24)[tissue.origin],pch=20,cex=1.5, xlab="PC1",ylab="PC2")
-plot.new()
-legend(0,1,legend=levels(tissue.origin),cex=.8,col=rainbow(24),pch=20,text.width=.4,text.font=2,
-       text.col=rainbow(24))
-
-# assign values for the eigengenes since they discriminate well the tissue specificity
-eigengenes <- s$v
-rownames(eigengenes) <- colnames(ccle_exp)
-colnames(eigengenes) <- paste("PC_",seq(from=1,to=ncol(eigengenes),by=1),sep="")
+# s <- fast.svd(global.matrix-rowMeans(global.matrix))
+# par(mfrow=c(1,1))
+# 
+# # percentage variance explained
+# plot(s$d^2/sum(s$d^2),pch=20)
+# 
+# # plot first and second svd
+# plot(s$v[,1],s$v[,2],col=rainbow(24)[tissue.origin],pch=20,cex=1.5, xlab="PC1",ylab="PC2")
+# plot.new()
+# legend(0,1,legend=levels(tissue.origin),cex=.8,col=rainbow(24),pch=20,text.width=.4,text.font=2,
+#        text.col=rainbow(24))
+# 
+# # assign values for the eigengenes since they discriminate well the tissue specificity
+# eigengenes <- s$v
+# rownames(eigengenes) <- colnames(ccle_exp)
+# colnames(eigengenes) <- paste("PC_",seq(from=1,to=ncol(eigengenes),by=1),sep="")
 
 #########################################################################################################
 ## feature selection for low variance
