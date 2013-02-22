@@ -23,13 +23,14 @@ abline(v=quantile(ccle_drug[mek.cells,mek.inhib[2]],probs=.2),col="green")
 
 
 #############################
-# discretize the ActArea
+# discretise the ActArea
 #############################
 
-a <- ifelse(ccle_drug[mek.cells,mek.inhib[1]]>quantile(ccle_drug[mek.cells,mek.inhib[1]],probs=.8),1,0)
-b <- ifelse(ccle_drug[mek.cells,mek.inhib[2]]>quantile(ccle_drug[mek.cells,mek.inhib[2]],probs=.8),1,0)
+a <- ifelse(ccle_drug[mek.cells,mek.inhib[1]]>quantile(ccle_drug[mek.cells,mek.inhib[1]],probs=.7),1,0)
+b <- ifelse(ccle_drug[mek.cells,mek.inhib[2]]>quantile(ccle_drug[mek.cells,mek.inhib[2]],probs=.7),1,0)
 discrete.mek.response <- ifelse(a==1 & b==1,1,0)
 
+table(discrete.mek.response)
 
 #######################################################
 # predictive modeling
@@ -47,7 +48,7 @@ global.matrix2 <- rbind(global.matrix,eigengenes)
 rownames(global.matrix2) <- c(rownames(global.matrix),paste("PC",c(1:30),sep=""))
 
 
-N=100
+N=50
 models <- 0
 i <- 0
 
@@ -72,8 +73,8 @@ selected2 <- c()
 while(models<N)
 {
   par(mfrow=c(1,1))
-  train <- sample(mek.cells,replace=TRUE)
-  val <-mek.cells[-which(mek.cells %in% train)]
+  train <- c(sample(mek.cells[which(discrete.mek.response==1)],replace=TRUE), sample(mek.cells[which(discrete.mek.response==0)],size=112,replace=TRUE))
+  trainval <-mek.cells[-which(mek.cells %in% train)]
   vec.train <-discrete.mek.response[train]
   
   cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1,family="binomial")
@@ -87,17 +88,6 @@ while(models<N)
   yhat.glioma <- c(yhat.glioma,list(predict(fit,t(global.matrix[,glioma.mek.cells[-which(glioma.mek.cells %in% train)]]),type="response")))
   yhat.melanoma <- c(yhat.melanoma,list(predict(fit,t(global.matrix[,melanoma.mek.cells[-which(melanoma.mek.cells %in% train)]]),type="response")))
   yhat.hemal <- c(yhat.hemal,list(predict(fit,t(global.matrix[,hemal.mek.cells[-which(hemal.mek.cells %in% train)]]),type="response")))
-  
-#   cv.fit2 <- cv.glmnet(t(global.matrix2[,train]), y=vec.train,nfolds=3, alpha=.1)
-#   fit2 <- glmnet(x=t(global.matrix2[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se)
-#   selected2 <- c(selected2,list(fit2$beta))
-#   yhat.all2 <- c(yhat.all2,list(predict(fit2, t(global.matrix2[,val]))))
-#   yhat.breast2 <- c(yhat.breast2,list(predict(fit2,t(global.matrix2[,breast.mek.cells[-which(breast.mek.cells %in% train)]]))))
-#   yhat.nsclc2 <- c(yhat.nsclc2,list(predict(fit2,t(global.matrix2[,nsclc.mek.cells[-which(nsclc.mek.cells %in% train)]]))))
-#   yhat.crc2 <- c(yhat.crc2,list(predict(fit2,t(global.matrix2[,crc.mek.cells[-which(crc.mek.cells %in% train)]]))))
-#   yhat.glioma2 <- c(yhat.glioma2,list(predict(fit2,t(global.matrix2[,glioma.mek.cells[-which(glioma.mek.cells %in% train)]]))))
-#   yhat.melanoma2 <- c(yhat.melanoma2,list(predict(fit2,t(global.matrix2[,melanoma.mek.cells[-which(melanoma.mek.cells %in% train)]]))))
-#   yhat.hemal2 <- c(yhat.hemal2,list(predict(fit2,t(global.matrix2[,hemal.mek.cells[-which(hemal.mek.cells %in% train)]]))))
 
   
   i=1+i
@@ -107,59 +97,60 @@ while(models<N)
 
 # assess and plot the performance
 require(ROCR)
-AUC.all <- c()
-for (i in c(1:N)){
-  Pred <- prediction(as.numeric(yhat.all[[i]]),discrete.mek.response[rownames(yhat.all[[i]])])
-  Perf <- performance(prediction.obj=Pred,"tpr","fpr")
-  AUC <- performance(prediction.obj=Pred,"auc")
-  AUC.all <- c(AUC.all,as.numeric(AUC@y.values)) }
-
-AUC.breast <- c()
-for (i in c(1:N)){
-  Pred <- prediction(as.numeric(yhat.breast[[i]]),discrete.mek.response[rownames(yhat.breast[[i]])])
-  Perf <- performance(prediction.obj=Pred,"tpr","fpr")
-  AUC <- performance(prediction.obj=Pred,"auc")
-  AUC.breast <- c(AUC.breast,as.numeric(AUC@y.values)) }
-
-AUC.nsclc <- c()
-for (i in c(1:N)){
-  Pred <- prediction(as.numeric(yhat.nsclc[[i]]),discrete.mek.response[rownames(yhat.nsclc[[i]])])
-  Perf <- performance(prediction.obj=Pred,"tpr","fpr")
-  AUC <- performance(prediction.obj=Pred,"auc")
-  AUC.nsclc <- c(AUC.nsclc,as.numeric(AUC@y.values)) }
-
-AUC.crc <- c()
-for (i in c(1:N)){
-  Pred <- prediction(as.numeric(yhat.crc[[i]]),discrete.mek.response[rownames(yhat.crc[[i]])])
-  Perf <- performance(prediction.obj=Pred,"tpr","fpr")
-  AUC <- performance(prediction.obj=Pred,"auc")
-  AUC.crc <- c(AUC.crc,as.numeric(AUC@y.values)) }
-
-AUC.glioma <- c()
-for (i in c(1:N)){
-  Pred <- prediction(as.numeric(yhat.glioma[[i]]),discrete.mek.response[rownames(yhat.glioma[[i]])])
-  Perf <- performance(prediction.obj=Pred,"tpr","fpr")
-  AUC <- performance(prediction.obj=Pred,"auc")
-  AUC.glioma <- c(AUC.glioma,as.numeric(AUC@y.values)) }
-
-AUC.melanoma <- c()
-for (i in c(1:N)){
-  Pred <- prediction(as.numeric(yhat.melanoma[[i]]),discrete.mek.response[rownames(yhat.melanoma[[i]])])
-  Perf <- performance(prediction.obj=Pred,"tpr","fpr")
-  AUC <- performance(prediction.obj=Pred,"auc")
-  AUC.melanoma <- c(AUC.melanoma,as.numeric(AUC@y.values)) }
-
-AUC.hemal <- c()
-for (i in c(1:N)){
-  Pred <- prediction(as.numeric(yhat.hemal[[i]]),discrete.mek.response[rownames(yhat.hemal[[i]])])
-  Perf <- performance(prediction.obj=Pred,"tpr","fpr")
-  AUC <- performance(prediction.obj=Pred,"auc")
-  AUC.hemal <- c(AUC.hemal,as.numeric(AUC@y.values)) }
+# AUC.all <- c()
+# for (i in c(1:N)){
+#   Pred <- prediction(as.numeric(yhat.all[[i]]),discrete.mek.response[rownames(yhat.all[[i]])])
+#   Perf <- performance(prediction.obj=Pred,"tpr","fpr")
+#   AUC <- performance(prediction.obj=Pred,"auc")
+#   AUC.all <- c(AUC.all,as.numeric(AUC@y.values)) }
+# 
+# AUC.breast <- c()
+# for (i in c(1:N)){
+#   Pred <- prediction(as.numeric(yhat.breast[[i]]),discrete.mek.response[rownames(yhat.breast[[i]])])
+#   Perf <- performance(prediction.obj=Pred,"tpr","fpr")
+#   AUC <- performance(prediction.obj=Pred,"auc")
+#   AUC.breast <- c(AUC.breast,as.numeric(AUC@y.values)) }
 
 
-AUC.all
-AUC.breast
-AUC.nsclc
-AUC.melanoma
-AUC.glioma
-AUC.hemal
+abc <- matrix(NA,nrow=length(nsclc.mek.cells),ncol=N)
+rownames(abc) <- nsclc.mek.cells
+colnames(abc) <- c(1:N)
+for(i in c(1:N)){abc[rownames(yhat.nsclc[[i]]),i] <- yhat.nsclc[[i]]}
+tmp <- apply(abc,1,median,na.rm=TRUE)
+Pred <- prediction(tmp,discrete.mek.response[nsclc.mek.cells])
+Perf <- performance(prediction.obj=Pred,"tpr","fpr")
+AUC <- performance(prediction.obj=Pred,"auc")
+AUC.nsclc <- c(AUC.nsclc,as.numeric(AUC@y.values)) }
+
+# AUC.crc <- c()
+# for (i in c(1:N)){
+#   Pred <- prediction(as.numeric(yhat.crc[[i]]),discrete.mek.response[rownames(yhat.crc[[i]])])
+#   Perf <- performance(prediction.obj=Pred,"tpr","fpr")
+#   AUC <- performance(prediction.obj=Pred,"auc")
+#   AUC.crc <- c(AUC.crc,as.numeric(AUC@y.values)) }
+# 
+# AUC.glioma <- c()
+# for (i in c(1:N)){
+#   Pred <- prediction(as.numeric(yhat.glioma[[i]]),discrete.mek.response[rownames(yhat.glioma[[i]])])
+#   Perf <- performance(prediction.obj=Pred,"tpr","fpr")
+#   AUC <- performance(prediction.obj=Pred,"auc")
+#   AUC.glioma <- c(AUC.glioma,as.numeric(AUC@y.values)) }
+# 
+# AUC.melanoma <- c()
+# for (i in c(1:N)){
+#   Pred <- prediction(as.numeric(yhat.melanoma[[i]]),discrete.mek.response[rownames(yhat.melanoma[[i]])])
+#   Perf <- performance(prediction.obj=Pred,"tpr","fpr")
+#   AUC <- performance(prediction.obj=Pred,"auc")
+#   AUC.melanoma <- c(AUC.melanoma,as.numeric(AUC@y.values)) }
+# 
+# AUC.hemal <- c()
+# for (i in c(1:N)){
+#   Pred <- prediction(as.numeric(yhat.hemal[[i]]),discrete.mek.response[rownames(yhat.hemal[[i]])])
+#   Perf <- performance(prediction.obj=Pred,"tpr","fpr")
+#   AUC <- performance(prediction.obj=Pred,"auc")
+#   AUC.hemal <- c(AUC.hemal,as.numeric(AUC@y.values)) }
+# 
+# 
+# M <- list(ALL=AUC.all, BREAST=AUC.breast, NSCLC=AUC.nsclc, CRC=AUC.crc, MELANOMA=AUC.melanoma, GLIOMA=AUC.glioma, HEMAL=AUC.hemal)
+# boxplot(M,outline=FALSE)
+# stripchart(M,add=TRUE,vertical=TRUE,method="jitter",col="red")
