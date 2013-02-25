@@ -23,7 +23,7 @@ rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""),paste(rowna
 # rownames(global.matrix2) <- c(rownames(global.matrix),paste("PC",c(1:30),sep=""))
 # 
 
-N=20
+N=100
 models <- 0
 i <- 0
 
@@ -36,10 +36,21 @@ yhat.melanoma <- c()
 yhat.hemal  <- c()
 selected <- c()
 
+# set up the Q1:Q4 for running balanced models
+q25 <- quantile(apply(ccle_drug[mek.cells,mek.inhib],1,mean),probs=.25) 
+q50 <- quantile(apply(ccle_drug[mek.cells,mek.inhib],1,mean),probs=.5)
+q75 <- quantile(apply(ccle_drug[mek.cells,mek.inhib],1,mean),probs=.75)
+Q1 <- names(which(apply(ccle_drug[mek.cells,mek.inhib],1,mean) < q25))
+Q2 <- names(which(apply(ccle_drug[mek.cells,mek.inhib],1,mean) > q25 & apply(ccle_drug[mek.cells,mek.inhib],1,mean) < q50 ))
+Q3 <- names(which(apply(ccle_drug[mek.cells,mek.inhib],1,mean) > q50 & apply(ccle_drug[mek.cells,mek.inhib],1,mean) < q75 ))
+Q4 <- names(which(apply(ccle_drug[mek.cells,mek.inhib],1,mean) > q75))
+rm(q25,q50,q75)
+
 while(models<N)
 {
   par(mfrow=c(1,1))
-  train <- sample(mek.cells,replace=TRUE)
+  #train <- sample(mek.cells,replace=TRUE)
+  train <- c(sample(Q1,replace=TRUE),sample(Q2,replace=TRUE),sample(Q3,replace=TRUE),sample(Q4,replace=TRUE))
   val <-mek.cells[-which(mek.cells %in% train)]
   vec.train <-apply(ccle_drug[train,mek.inhib],1,mean)
   
@@ -59,21 +70,21 @@ while(models<N)
   models <- length(yhat.all)
   }  
 
-
-
-###### SPEARMAN ###########
-par(mfrow=c(2,4),oma=c(0,0,6,0))
-method.cor <- "spearman"
-cex=1.5
-source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/Mek_performance.R")
-title(main="Performance of 200 bootstrapped models\npredicting sensitivity to MEK inhibitors\ntraining in all CCLE cell lines",
-      sub="sensitivity was assessed by ActArea",outer=TRUE)
-
-###### PEARSON ###########
-par(mfrow=c(2,4),oma=c(0,0,6,0))
-method.cor <- "pearson"
-cex=1.5
-source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/Mek_performance.R")
-title(main="Performance of 200 bootstrapped models\npredicting sensitivity to MEK inhibitors\ntraining in CCLE all cell lines",
-      sub="sensitivity was assessed by ActArea",outer=TRUE)
-
+# 
+# 
+# ###### SPEARMAN ###########
+# par(mfrow=c(2,4),oma=c(0,0,6,0))
+# method.cor <- "spearman"
+# cex=1.5
+# source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/Mek_performance.R")
+# title(main="Performance of 100 bootstrapped models\npredicting sensitivity to MEK inhibitors\ntraining in all CCLE cell lines",
+#       sub="sensitivity was assessed by ActArea",outer=TRUE)
+# 
+# ###### PEARSON ###########
+# par(mfrow=c(2,4),oma=c(0,0,6,0))
+# method.cor <- "pearson"
+# cex=1.5
+# source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/Mek_performance.R")
+# title(main="Performance of 100 bootstrapped models\npredicting sensitivity to MEK inhibitors\ntraining in CCLE all cell lines",
+#       sub="sensitivity was assessed by ActArea",outer=TRUE)
+# 
