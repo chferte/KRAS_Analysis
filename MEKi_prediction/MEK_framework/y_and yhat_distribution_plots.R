@@ -85,18 +85,6 @@ plot(threshold,NPV,main=paste(cell.names[[j]]),ylim=c(0,1),type="l",lwd=3, cex.a
 plot(threshold,Accuracy,main=paste(cell.names[[j]]),ylim=c(0,1),type="l",lwd=3, cex.axis=.8)  
 }
 
-#############################
-# same but with boxplots 
-############################
-par(mfrow=c(1,1),oma=c(1,1,1,1))
-boxplot(apply(ccle_drug[mek.cells,mek.inhib],1,mean),main="ALL MEK CELLS")
-par(mfrow=c(2,3))
-boxplot(apply(ccle_drug[nsclc.mek.cells,mek.inhib],1,mean),main="NSCLC",ylim=c(0,8))
-boxplot(apply(ccle_drug[breast.mek.cells,mek.inhib],1,mean),main="BREAST",ylim=c(0,8))
-boxplot(apply(ccle_drug[crc.mek.cells,mek.inhib],1,mean),main="COLORECTAL",ylim=c(0,8))
-boxplot(apply(ccle_drug[hemal.mek.cells,mek.inhib],1,mean),main="Hematologic\nMalignancies",ylim=c(0,8))
-boxplot(apply(ccle_drug[glioma.mek.cells,mek.inhib],1,mean),main="GLIOMA",ylim=c(0,8))
-boxplot(apply(ccle_drug[melanoma.mek.cells,mek.inhib],1,mean),main="MELANOMA",ylim=c(0,8))
 
 
 ############################
