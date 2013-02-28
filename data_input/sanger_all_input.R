@@ -19,7 +19,10 @@ library(synapseClient)
 options(stringsAsFactors=FALSE)
 synapseLogin("charles.ferte@sagebase.org","charles")
 
-## sanger gene expression
+#####################################################################################################################
+# sanger gene expression
+#####################################################################################################################
+
 sanger_exp <- loadEntity("syn1417725")
 sanger_exp <- sanger_exp$objects$eset
 
@@ -55,7 +58,9 @@ colnames(sanger_exp1) <- sampleNames(sanger_exp)
 sanger_exp <- sanger_exp1
 rm(sanger_exp1,tmp)
 
+#####################################################################################################################
 # input sanger mutations data
+#####################################################################################################################
 sanger_mut <- read.csv("/home/cferte/cell_line_data/Sanger_gdsc_mutation_w3.csv",header=TRUE)
 rownames(sanger_mut) <- sanger_mut$Cell.Line
 sanger_mut <- sanger_mut[, -which(colnames(sanger_mut) %in% c("Cell.Line","Cancer.Type","Cosmic_ID","Tissue"))]
@@ -67,24 +72,18 @@ sanger_mut[!sanger_mut %in% c("0","NA")] <- "1"
 colnames(sanger_mut) <- toupper(colnames(sanger_mut))
 rownames(sanger_mut) <- toupper(rownames(sanger_mut))
 
-## input the sanger drug response
-sanger_drug <- read.csv("/home/cferte/cell_line_data/gdsc_manova_output_w2.csv",header=TRUE)
+#####################################################################################################################
+# input the sanger drug response (IC 50 only)
+#####################################################################################################################
+sanger_drug <- read.delim("/home/cferte/cell_line_data/sanger_drugs_pharma.txt",header=TRUE,na.strings = c("","NA"))
+rownames(sanger_drug) <- sanger_drug$Cell.Line
+sanger_drug <- sanger_drug[,grep(pattern="IC_50",x=colnames(sanger_drug))]
+sanger_drug <- sanger_drug[,which(substr(x=colnames(sanger_drug),start=nchar(colnames(sanger_drug))-4,stop=nchar(colnames(sanger_drug)))=="IC_50")]
 
-drug <- matrix(NA,nrow=length(unique(sanger_drug$sanger_Name)),ncol=length(unique(sanger_drug$Compound)))
-colnames(drug) <- unique(sanger_drug$Compound)
-rownames(drug) <- unique(sanger_drug$sanger_Name)
-drug <- drug[-which(rownames(drug)=="b"),]
 
-for(i in rownames(drug)){
-  for(k in colnames(drug)){
-    tmp <- sanger_drug$ActArea_.raw.[which(sanger_drug$sanger_Name==i & sanger_drug$Compound==k)]
-    if(length(tmp)!=0){drug[i,k] <-tmp} 
-  }}
-
-sanger_drug <- drug
-rm(drug)
-
-## input the sanger cnv
+#####################################################################################################################
+# input the sanger cnv
+#####################################################################################################################
 sanger_cnv <- loadEntity("syn1417763")
 sanger_cnv <- sanger_cnv$objects$eset
 tmp <- unlist(mget(x=sub(pattern="_eg",replacement="",x=featureNames(sanger_cnv)),org.Hs.egSYMBOL,ifnotfound=NA))
@@ -93,10 +92,16 @@ colnames(sanger_cnv1) <- sampleNames(sanger_cnv)
 sanger_cnv <- sanger_cnv1
 rm(sanger_cnv1,tmp)
 
-## input the sanger info
+#####################################################################################################################
+# input the sanger info
+#####################################################################################################################
 sanger_info <- read.delim("/home/cferte/cell_line_data/sanger_sample_info_file_2012-04-06.txt")
 
+
+#####################################################################################################################
 # make a list of all objects and save it into synapse
+#####################################################################################################################
+
 sanger_data <- list(sanger_info=sanger_info,sanger_exp=sanger_exp,sanger_cnv=sanger_cnv,sanger_mut=sanger_mut,sanger_drug=sanger_drug)
 
 #sanger_all <- Data(list(name = "sanger_all", parentId = 'syn1670945'))
