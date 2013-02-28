@@ -15,24 +15,34 @@ source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/l
 # define globalmatrix (without eigengenes)
 global.matrix <- rbind(ccle_exp,ccle_cnv,ccle_mut)
 rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""),paste(rownames(ccle_cnv),"_cnv",sep=""),paste(rownames(ccle_mut),"_mut",sep=""))
-# 
-# # define globalmatrix2 (with eigengenes)
+
+# define globalmatrix2 (with eigengenes)
 # eigengenes <- t(eigengenes[colnames(global.matrix),c(1:30)])
 # global.matrix2 <- rbind(global.matrix,eigengenes)
 # rownames(global.matrix2) <- c(rownames(global.matrix),paste("PC",c(1:30),sep=""))
 # 
 
+# assign weights 
+mean.mek.sens <- apply(ccle_drug[mek.cells,mek.inhib],1,mean)
+density.id <- sapply(c(1:length(mean.mek.sens)),function(x){min(which(density(mean.mek.sens)$x>mean.mek.sens[x]))})
+density.weights <- log(1/(density(mean.mek.sens)$y[density.id]))
+names(density.weights) <- names(mean.mek.sens)
+rm(density.id,mean.mek.sens)
+density.weights  <- rep(1,times=length(density.weights))                    
+summary(density.weights)
+boxplot(density.weights)
+
 require(multicore)
 
 N=100
-models <- 0
+#models <- 0
 i <- 0
 
 
 # set up the Q1:Q4 for running balanced models
-q25 <- quantile(apply(ccle_drug[mek.cells,mek.inhib],1,mean),probs=.25) 
+q25 <- quantile(apply(ccle_drug[mek.cells,mek.inhib],1,mean),probs=.35) 
 q50 <- quantile(apply(ccle_drug[mek.cells,mek.inhib],1,mean),probs=.5)
-q75 <- quantile(apply(ccle_drug[mek.cells,mek.inhib],1,mean),probs=.75)
+q75 <- quantile(apply(ccle_drug[mek.cells,mek.inhib],1,mean),probs=.65)
 Q1 <- names(which(apply(ccle_drug[mek.cells,mek.inhib],1,mean) < q25))
 Q2 <- names(which(apply(ccle_drug[mek.cells,mek.inhib],1,mean) > q25 & apply(ccle_drug[mek.cells,mek.inhib],1,mean) < q50 ))
 Q3 <- names(which(apply(ccle_drug[mek.cells,mek.inhib],1,mean) > q50 & apply(ccle_drug[mek.cells,mek.inhib],1,mean) < q75 ))
@@ -46,21 +56,31 @@ PARAL <- mclapply(X=1:N,FUN=function(x){
 #{
   
   #standard sampling
-  #train <- sample(mek.cells,replace=TRUE)
+  train <- sample(mek.cells,replace=TRUE)
   
   # balanced model
-  train <- c(sample(x=c(Q1,Q2,Q3),replace=TRUE,size=110),sample(Q4,replace=TRUE,size=330))
+  #train <- c(sample(x=c(Q1),replace=TRUE,size=220),sample(Q4,replace=TRUE,size=220))
+  
+  # weighted model on the distribution
+  #train <- sample(mek.cells,replace=TRUE)
+  
+  
+  # tissue specific models
+  #train <- sample(hemal.mek.cells,replace=TRUE)
   
   # weighted lung models
-  #train <- c(sample(mek.cells,replace=TRUE),sample(nsclc.mek.cells,replace=TRUE))
+  #train <- c(sample(mek.cells,replace=TRUE,size=144),sample(nsclc.mek.cells,replace=TRUE))
   
+  # mixed balanced & tissue specific model
+  #train  <- c(sample(nsclc.mek.cells,replace=TRUE),sample(x=c(Q1,Q2,Q3),replace=TRUE,size=36),sample(Q4,replace=TRUE,size=36))
   
   vec.train <-apply(ccle_drug[train,mek.inhib],1,mean)
   
+  #cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1,weights=density.weights[train])
+  #fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se,weights=density.weights[train])
   cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1)
   fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se)
-  
-  return(list(fit,train)) },mc.set.seed=TRUE,mc.cores=5)
+  return(list(fit,train)) },mc.set.seed=TRUE,mc.cores=6)
   
 
 

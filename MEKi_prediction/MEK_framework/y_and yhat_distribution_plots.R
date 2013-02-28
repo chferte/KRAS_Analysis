@@ -7,13 +7,13 @@
 ############################
 
 par(mfrow=c(2,4),oma=c(0,0,6,0))
-plot(density(apply(ccle_drug[mek.cells,mek.inhib],1,mean)),xlim=c(-2,8.5),main="ALL CELLS",ylim=c(0,.8),lwd=2)
-plot(density(apply(ccle_drug[nsclc.mek.cells,mek.inhib],1,mean)),xlim=c(-2,8.5),main="NSCLC",ylim=c(0,.8),lwd=2)
-plot(density(apply(ccle_drug[breast.mek.cells,mek.inhib],1,mean)),xlim=c(-2,8.5),main="BREAST",ylim=c(0,.8),lwd=2)
-plot(density(apply(ccle_drug[crc.mek.cells,mek.inhib],1,mean)),xlim=c(-2,8.5),main="COLORECTAL",ylim=c(0,.8),lwd=2)
-plot(density(apply(ccle_drug[hemal.mek.cells,mek.inhib],1,mean)),xlim=c(-2,8.5),main="Hematologic\nMalignancies",ylim=c(0,.8),lwd=2)
-plot(density(apply(ccle_drug[glioma.mek.cells,mek.inhib],1,mean)),xlim=c(-2,8.5),main="GLIOMA",ylim=c(0,.8),lwd=2)
-plot(density(apply(ccle_drug[melanoma.mek.cells,mek.inhib],1,mean)),xlim=c(-2,8.5),main="MELANOMA",ylim=c(0,.8),lwd=2)
+cells <- list(mek.cells,nsclc.mek.cells,breast.mek.cells,crc.mek.cells,hemal.mek.cells,glioma.mek.cells,melanoma.mek.cells)
+cell.names <- list("ALL CELLS","NSCLC","BREAST","CRC","Hematologic\nMalignancies","GLIOMA","MELANOMA")
+for(i in c(1:length(cells))){
+plot(density(apply(ccle_drug[cells[[i]],mek.inhib],1,mean)),xlim=c(-2,8.5),main=paste(cell.names[[i]]),ylim=c(0,.8),lwd=3)
+}
+tmp <- sapply(c(1:N),function(x){return(PARAL[[x]][[2]])})
+plot(density(apply(ccle_drug[tmp,mek.inhib],1,mean)),xlim=c(-2,8.5),main="training set",ylim=c(0,.8),lwd=3,col="red")
 title(main="Distribution of the sensitivity of cell lines to MEK inhibitors according to tissue type \n(sensitivity assessed by ActArea)",
       sub="sensitivity was assessed by ActArea",outer=TRUE)
 
@@ -26,7 +26,7 @@ par(mfrow=c(2,4),oma=c(0,0,4,0))
 cells <- list(mek.cells,nsclc.mek.cells,breast.mek.cells,crc.mek.cells,hemal.mek.cells,glioma.mek.cells,melanoma.mek.cells)
 cell.names <- list("ALL","NSCLC","BREAST","CRC","Hematologic\nMalignancies","GLIOMA","MELANOMA")
 yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.glioma,yhat.melanoma)
-
+threshold <- .8
 for(j in c(1:length(cells)))
   {
 abc <- matrix(NA,nrow=length(cells[[j]]),ncol=N)
@@ -35,10 +35,10 @@ colnames(abc) <- c(1:N)
 for(i in c(1:N)){abc[rownames(yhats[[j]][[i]]),i] <- yhats[[j]][[i]]}
 abc <- apply(abc,1,median,na.rm=TRUE)
 plot(density(abc),xlim=c(-2,5.5),main=paste(cell.names[[j]],"yhats"),ylim=c(0,1.4),lwd=2)
-abline(v=quantile(abc,probs=.8),col="red",lty=2)
-top.predicted.cells <- ifelse(abc>quantile(abc,probs=.8),1,0)
+abline(v=quantile(abc,probs=c(.2,.8)),col="red",lty=3)
+top.predicted.cells <- ifelse(abc>quantile(abc,probs=threshold),1,0)
 def <- apply(ccle_drug[cells[[j]],mek.inhib],1,mean)
-top.true.cells <- ifelse(def>quantile(def,probs=.8),1,0)
+top.true.cells <- ifelse(def>quantile(def,probs=threshold),1,0)
 cat("predictive performance when fixing a threshold at the 80th quantile\n",paste("for ",cell.names[[j]]),"cell lines")
 PPV <- length(which(top.predicted.cells==1 & top.true.cells==1))/length(which(top.predicted.cells==1))
 NPV <- length(which(top.predicted.cells==0 & top.true.cells==0))/length(which(top.predicted.cells==0))
@@ -72,10 +72,11 @@ for(j in c(1:length(cells)))
   rownames(abc) <- cells[[j]]
   colnames(abc) <- c(1:N)
   for(i in c(1:N)){abc[rownames(yhats[[j]][[i]]),i] <- yhats[[j]][[i]]}
-  abc <- apply(abc,1,median,na.rm=TRUE)
-    top.predicted.cells <- ifelse(abc>quantile(abc,probs=k),1,0)
+  
+   abc <- apply(abc,1,median,na.rm=TRUE)
+    top.predicted.cells <- ifelse(abc<quantile(abc,probs=k),1,0)
   def <- apply(ccle_drug[cells[[j]],mek.inhib],1,mean)
-  top.true.cells <- ifelse(def>quantile(def,probs=k),1,0)
+  top.true.cells <- ifelse(def<quantile(def,probs=k),1,0)
   PPV <- c(PPV,length(which(top.predicted.cells==1 & top.true.cells==1))/length(which(top.predicted.cells==1)))
   NPV <- c(NPV,length(which(top.predicted.cells==0 & top.true.cells==0))/length(which(top.predicted.cells==0)))
   Accuracy <- c(Accuracy,(length(which(top.predicted.cells==1 & top.true.cells==1)) + length(which(top.predicted.cells==0 & top.true.cells==0)))/length(top.predicted.cells))
@@ -125,3 +126,5 @@ for(i in c(1:length(k)))
 }
 
 title(main="Distribution of the sensitivity of cell lines to MEK inhibitors according to tissue type \n(sensitivity assessed by ActArea)",,outer=TRUE)
+
+
