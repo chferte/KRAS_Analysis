@@ -2,9 +2,9 @@
 # sage bionetworks
 # Feb 22th, 2013
 
-#############################
+################################################################################################################
 # plot the distribution of MEK ActArea (ie: plot the y)
-############################
+################################################################################################################
 
 par(mfrow=c(2,4),oma=c(0,0,6,0))
 cells <- list(mek.cells,nsclc.mek.cells,breast.mek.cells,crc.mek.cells,hemal.mek.cells,glioma.mek.cells,melanoma.mek.cells)
@@ -17,9 +17,9 @@ plot(density(apply(ccle_drug[tmp,mek.inhib],1,mean)),xlim=c(-2,8.5),main="traini
 title(main="Distribution of the sensitivity of cell lines to MEK inhibitors according to tissue type \n(sensitivity assessed by ActArea)",
       sub="sensitivity was assessed by ActArea",outer=TRUE)
 
-#############################
+################################################################################################################
 # plot the distribution of yhats of MEK ActArea (ie: plot the y)
-############################
+################################################################################################################
 
 par(mfrow=c(2,4),oma=c(0,0,4,0))
 
@@ -52,9 +52,9 @@ print(paste("Accuracy=",Accuracy))
 title(main="Distribution of the yhats of the MEK inhibitors according to tissue type \n(sensitivity assessed by ActArea)",outer=TRUE)
 
 
-#############################
+#################################################################################################################
 # plot the distribution of yhats of MEK ActArea (ie: plot the y)
-############################
+################################################################################################################
 
 par(mfrow=c(2,3),oma=c(0,0,0,0))
 cells <- list(mek.cells,nsclc.mek.cells,breast.mek.cells,crc.mek.cells,hemal.mek.cells,glioma.mek.cells,melanoma.mek.cells)
@@ -74,23 +74,27 @@ for(j in c(1:length(cells)))
   for(i in c(1:N)){abc[rownames(yhats[[j]][[i]]),i] <- yhats[[j]][[i]]}
   
    abc <- apply(abc,1,median,na.rm=TRUE)
-    top.predicted.cells <- ifelse(abc<quantile(abc,probs=k),1,0)
+    top.predicted.cells <- ifelse(abc>=quantile(abc,probs=k),1,0)
   def <- apply(ccle_drug[cells[[j]],mek.inhib],1,mean)
-  top.true.cells <- ifelse(def<quantile(def,probs=k),1,0)
+  top.true.cells <- ifelse(def>=quantile(def,probs=k),1,0)
   PPV <- c(PPV,length(which(top.predicted.cells==1 & top.true.cells==1))/length(which(top.predicted.cells==1)))
   NPV <- c(NPV,length(which(top.predicted.cells==0 & top.true.cells==0))/length(which(top.predicted.cells==0)))
   Accuracy <- c(Accuracy,(length(which(top.predicted.cells==1 & top.true.cells==1)) + length(which(top.predicted.cells==0 & top.true.cells==0)))/length(top.predicted.cells))
  }
-plot(threshold,PPV,main=paste(cell.names[[j]]),ylim=c(0,1),type="l",lwd=3, cex.axis=.8)
-plot(threshold,NPV,main=paste(cell.names[[j]]),ylim=c(0,1),type="l",lwd=3, cex.axis=.8)
-plot(threshold,Accuracy,main=paste(cell.names[[j]]),ylim=c(0,1),type="l",lwd=3, cex.axis=.8)  
+  plot(threshold,PPV,main=paste(cell.names[[j]]),ylim=c(0,1),type="l",lwd=3, cex.axis=.9)
+  abline(h=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")  
+  abline(v=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")
+  plot(threshold,NPV,main=paste(cell.names[[j]]),ylim=c(0,1),type="l",lwd=3, cex.axis=.9)
+  abline(h=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")  
+  abline(v=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")
+  plot(threshold,Accuracy,main=paste(cell.names[[j]]),ylim=c(0,1),type="l",lwd=3, cex.axis=.9)  
+  abline(h=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")  
+  abline(v=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")
 }
 
-
-
-############################
+################################################################################################################
 # plot the RMSE for the prediction of each cell lines
-############################
+################################################################################################################
 par(oma=c(0,0,6,0))
 # first plot the density of the IC50
 k <- list(mek.cells,nsclc.mek.cells,breast.mek.cells,crc.mek.cells,hemal.mek.cells,glioma.mek.cells,melanoma.mek.cells)
@@ -99,11 +103,11 @@ names(k) <- c("ALL CELLS","NSCLC","BREAST","COLORECTAL","Hematologic\nMalignanci
 par(mfrow=c(2,4))
 for(i in c(1:length(k)))
 {
-  
+ 
   tissue.ic50 <- apply(ccle_drug[k[[i]],mek.inhib],1,mean)
-  plot(density(tissue.ic50),xlim=c(-2,8.5),main=paste(names(k)[i]),ylim=c(0,3.5),lwd=2)
+  plot(density(tissue.ic50),main=paste(names(k)[i]),ylim=c(0,3.5),xlim=c(-2,8.5),lwd=1) 
   
-  # then create a matrix abc containing all the yhat per cells
+  #  create a matrix abc containing all the yhat per cells
   abc <- matrix(NA,ncol=N,nrow=length(k[[i]]))
   rownames(abc) <- k[[i]]
   for(j in c(1:length(yhats[[i]]))) { abc[rownames(yhats[[i]][[j]]),j]<- yhats[[i]][[j]]}
@@ -120,9 +124,12 @@ for(i in c(1:length(k)))
   # plot the variance of the predictions accodring to their actual IC50
   # to show that the prediction performance is dependant on the distribution of the model features in our model
   tmp <- names(sort(apply(ccle_drug[k[[i]],mek.inhib],1,mean)))
-  lines(tissue.ic50[tmp],RMSE[tmp],col="red",type="p",pch=20)
+  lines(tissue.ic50[tmp],RMSE[tmp],col="coral1",type="p",pch=20,cex=.7)
+  axis(4, ylim=c(0,max(RMSE[tmp])+1),,col="red",col.axis="red")
   q <- loess(RMSE[tmp]~tissue.ic50[tmp])
-  lines(q$x,q$fitted,col="blue",lwd=3)
+  lines(q$x,q$fitted,col="red",lwd=3)
+  #lines(density(tissue.ic50),main=paste(names(k)[i]),ylim=c(0,3.5),xlim=c(-2,8.5),lwd=2)
+ lines(density(tissue.ic50),main=paste(names(k)[i]),lwd=3)
 }
 
 title(main="Distribution of the sensitivity of cell lines to MEK inhibitors according to tissue type \n(sensitivity assessed by ActArea)",,outer=TRUE)
