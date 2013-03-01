@@ -6,8 +6,6 @@
 # sanger data input
 
 #load the different packages
-
-
 library(affy)
 library(corpcor)
 library(lattice)
@@ -71,6 +69,7 @@ sanger_mut[sanger_mut==""] <- "NA"
 sanger_mut[!sanger_mut %in% c("0","NA")] <- "1"
 colnames(sanger_mut) <- toupper(colnames(sanger_mut))
 rownames(sanger_mut) <- toupper(rownames(sanger_mut))
+rownames(sanger_mut) <- gsub(pattern="-",x=rownames(sanger_mut),replacement="")
 
 #####################################################################################################################
 # input the sanger drug response (IC 50 only)
@@ -93,19 +92,38 @@ sanger_cnv <- sanger_cnv1
 rm(sanger_cnv1,tmp)
 
 #####################################################################################################################
-# input the sanger info
+## input the sanger info
 #####################################################################################################################
-sanger_info <- read.delim("/home/cferte/cell_line_data/sanger_sample_info_file_2012-04-06.txt")
+ 
+sanger_info <- read.delim("/home/cferte/cell_line_data/sanger_drugs_pharma.txt",header=TRUE,na.strings = c("","NA"))
+rownames(sanger_info) <- sanger_info$Cell.Line
+sanger_info <- sanger_info[,1:4]
+sanger_info$cell_line_id <- toupper(gsub(pattern="-",replacement="",x=paste(sanger_info$Cell.Line,"_",sanger_info$Tissue,sep="")))
+
+colnames(sanger_info)
+
+#####################################################################################################################
+# input the sanger drug info
+#####################################################################################################################
+sanger_drug_info <- read.delim("/home/cferte/cell_line_data/Sanger_drug_info.txt",header=TRUE,na.strings = c("","NA"))
+
+
+#####################################################################################################################
+# make the sampleNames coherent between mut exp and mut
+#####################################################################################################################
+tmp1 <- sapply(strsplit(x=colnames(sanger_exp),split="_"),function(x){x[[1]]})
+tmp <- match(rownames(sanger_mut),tmp1)
+rownames(sanger_mut)  <- colnames(sanger_exp)[tmp]
 
 
 #####################################################################################################################
 # make a list of all objects and save it into synapse
 #####################################################################################################################
 
-sanger_data <- list(sanger_info=sanger_info,sanger_exp=sanger_exp,sanger_cnv=sanger_cnv,sanger_mut=sanger_mut,sanger_drug=sanger_drug)
+sanger_data <- list(sanger_info=sanger_info,sanger_exp=sanger_exp,sanger_cnv=sanger_cnv,sanger_mut=sanger_mut,sanger_drug=sanger_drug,sanger_drug_info=sanger_drug_info)
 
-#sanger_all <- Data(list(name = "sanger_all", parentId = 'syn1670945'))
-#sanger_all <- createEntity(sanger_all)
+sanger_all <- Data(list(name = "sanger_all", parentId = 'syn1670945'))
+sanger_all <- createEntity(sanger_all)
 
 # add object into the data entity
 sanger_all <- addObject(sanger_all,sanger_data)
@@ -113,13 +131,3 @@ sanger_all <- addObject(sanger_all,sanger_data)
 # push the raw data into this entity
 sanger_all <- storeEntity(entity=sanger_all)
 
-
-
-# # make the sampleNames coherent between mut exp and cnv
-# tmp <- intersect(colnames(sanger_exp),colnames(sanger_cnv))
-# tmp <- intersect(tmp,colnames(sanger_mut))
-# tmp <- intersect(tmp,rownames(sanger_drug))
-# sanger_cnv <- sanger_cnv[,tmp]
-# sanger_exp <- sanger_exp[,tmp]
-# sanger_mut <- sanger_mut[,tmp]
-# 
