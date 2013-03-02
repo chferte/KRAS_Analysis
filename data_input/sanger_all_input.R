@@ -74,8 +74,9 @@ rownames(sanger_mut) <- gsub(pattern="-",x=rownames(sanger_mut),replacement="")
 #####################################################################################################################
 # input the sanger drug response (IC 50 only)
 #####################################################################################################################
-sanger_drug <- read.delim("/home/cferte/cell_line_data/sanger_drugs_pharma.txt",header=TRUE,na.strings = c("","NA"))
+sanger_drug1 <- read.delim("/home/cferte/cell_line_data/sanger_drugs_pharma.txt",header=TRUE,na.strings = c("","NA"))
 rownames(sanger_drug) <- sanger_drug$Cell.Line
+rownames(sanger_drug) <- gsub(pattern="-",replacement="",x=toupper(rownames(sanger_drug)))
 sanger_drug <- sanger_drug[,grep(pattern="IC_50",x=colnames(sanger_drug))]
 sanger_drug <- sanger_drug[,which(substr(x=colnames(sanger_drug),start=nchar(colnames(sanger_drug))-4,stop=nchar(colnames(sanger_drug)))=="IC_50")]
 

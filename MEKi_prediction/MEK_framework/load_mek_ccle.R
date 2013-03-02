@@ -32,7 +32,7 @@ assign(x=names(ccle_all)[6],ccle_all[[6]])
 assign(x=names(ccle_drug)[1],ccle_drug[[1]])
 assign(x=names(ccle_drug)[2],ccle_drug[[2]])
 
-# let's use the ActArea as ccle_drug
+# let's use the ActArea as ccle_drug: "_IC50Norm" or "_ActAreaNorm"
 ccle_drug <- ccle_drug_ActAreaNorm
 
 #modify the ccle_mut into a binary matrix

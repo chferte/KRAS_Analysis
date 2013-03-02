@@ -5,7 +5,7 @@
 #############################
 # load the data
 #############################
-source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_mek_data.R")
+source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_mek_ccle.R")
 
 #######################################################
 # predictive modeling
@@ -23,14 +23,18 @@ rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""),paste(rowna
 # 
 
 # assign weights 
-mean.mek.sens <- apply(ccle_drug[mek.cells,mek.inhib],1,mean)
-density.id <- sapply(c(1:length(mean.mek.sens)),function(x){min(which(density(mean.mek.sens)$x>mean.mek.sens[x]))})
-density.weights <- log(1/(density(mean.mek.sens)$y[density.id]))
-names(density.weights) <- names(mean.mek.sens)
-rm(density.id,mean.mek.sens)
-density.weights  <- rep(1,times=length(density.weights))                    
-summary(density.weights)
-boxplot(density.weights)
+# mean.mek.sens <- apply(ccle_drug[mek.cells,mek.inhib],1,mean)
+# density.id <- sapply(c(1:length(mean.mek.sens)),function(x){min(which(density(mean.mek.sens)$x>mean.mek.sens[x]))})
+# density.weights <- log(1/(density(mean.mek.sens)$y[density.id]))
+# names(density.weights) <- names(mean.mek.sens)
+# rm(density.id,mean.mek.sens)
+# density.weights  <- rep(1,times=length(density.weights))                    
+# 
+# summary(density.weights)
+# boxplot(density.weights)
+density.weights <- rep(0.5,times=length(mek.cells))
+names(density.weights) <- mek.cells
+density.weights[names(new.weight)] <- new.weight
 
 require(multicore)
 
@@ -48,6 +52,7 @@ Q2 <- names(which(apply(ccle_drug[mek.cells,mek.inhib],1,mean) > q25 & apply(ccl
 Q3 <- names(which(apply(ccle_drug[mek.cells,mek.inhib],1,mean) > q50 & apply(ccle_drug[mek.cells,mek.inhib],1,mean) < q75 ))
 Q4 <- names(which(apply(ccle_drug[mek.cells,mek.inhib],1,mean) > q75))
 rm(q25,q50,q75)
+
 
 PARAL <- mclapply(X=1:N,FUN=function(x){
   print(i)
@@ -76,10 +81,10 @@ PARAL <- mclapply(X=1:N,FUN=function(x){
   
   vec.train <-apply(ccle_drug[train,mek.inhib],1,mean)
   
-  #cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1,weights=density.weights[train])
-  #fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se,weights=density.weights[train])
-  cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1)
-  fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se)
+  cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1,weights=density.weights[train])
+  fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se,weights=density.weights[train])
+  #cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1)
+  #fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se)
   return(list(fit,train)) },mc.set.seed=TRUE,mc.cores=6)
   
 
