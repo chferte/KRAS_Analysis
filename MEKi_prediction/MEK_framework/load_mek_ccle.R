@@ -115,7 +115,7 @@ ccle_drug <- ccle_drug[mek.cells,]
 ####################################################################################################
 # define the NSCLC Breast Lung Melanoma Glioma & heMal (hematological malignacies) cells
 ####################################################################################################
-
+#mek.cells <- clean.concordant.cells
 carcinoma.mek.cells <-  intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology =="carcinoma"])
 nsclc.mek.cells <- carcinoma.mek.cells[grep(pattern="LUNG",x=carcinoma.mek.cells)]
 nsclc.mek.cells <- intersect(nsclc.mek.cells,ccle_info$CCLE.name[ ccle_info$Hist.Subtype1 !="small_cell_carcinoma"])

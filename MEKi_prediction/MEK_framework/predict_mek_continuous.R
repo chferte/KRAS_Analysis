@@ -31,27 +31,27 @@ rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""),paste(rowna
 # density.weights  <- rep(1,times=length(density.weights))                    
 # 
 # summary(density.weights)
-# boxplot(density.weights)
-density.weights <- rep(0.5,times=length(mek.cells))
-names(density.weights) <- mek.cells
-density.weights[names(new.weight)] <- new.weight
+# # boxplot(density.weights)
+# density.weights <- rep(0.5,times=length(mek.cells))
+# names(density.weights) <- mek.cells
+# density.weights[names(new.weight)] <- new.weight
 
 require(multicore)
 
-N=100
+N=200
 #models <- 0
 i <- 0
 
-
-# set up the Q1:Q4 for running balanced models
-q25 <- quantile(apply(ccle_drug[mek.cells,mek.inhib],1,mean),probs=.35) 
-q50 <- quantile(apply(ccle_drug[mek.cells,mek.inhib],1,mean),probs=.5)
-q75 <- quantile(apply(ccle_drug[mek.cells,mek.inhib],1,mean),probs=.65)
-Q1 <- names(which(apply(ccle_drug[mek.cells,mek.inhib],1,mean) < q25))
-Q2 <- names(which(apply(ccle_drug[mek.cells,mek.inhib],1,mean) > q25 & apply(ccle_drug[mek.cells,mek.inhib],1,mean) < q50 ))
-Q3 <- names(which(apply(ccle_drug[mek.cells,mek.inhib],1,mean) > q50 & apply(ccle_drug[mek.cells,mek.inhib],1,mean) < q75 ))
-Q4 <- names(which(apply(ccle_drug[mek.cells,mek.inhib],1,mean) > q75))
-rm(q25,q50,q75)
+# 
+# # set up the Q1:Q4 for running balanced models
+# q25 <- quantile(apply(ccle_drug[mek.cells,mek.inhib],1,mean),probs=.35) 
+# q50 <- quantile(apply(ccle_drug[mek.cells,mek.inhib],1,mean),probs=.5)
+# q75 <- quantile(apply(ccle_drug[mek.cells,mek.inhib],1,mean),probs=.65)
+# Q1 <- names(which(apply(ccle_drug[mek.cells,mek.inhib],1,mean) < q25))
+# Q2 <- names(which(apply(ccle_drug[mek.cells,mek.inhib],1,mean) > q25 & apply(ccle_drug[mek.cells,mek.inhib],1,mean) < q50 ))
+# Q3 <- names(which(apply(ccle_drug[mek.cells,mek.inhib],1,mean) > q50 & apply(ccle_drug[mek.cells,mek.inhib],1,mean) < q75 ))
+# Q4 <- names(which(apply(ccle_drug[mek.cells,mek.inhib],1,mean) > q75))
+# rm(q25,q50,q75)
 
 
 PARAL <- mclapply(X=1:N,FUN=function(x){
@@ -81,10 +81,10 @@ PARAL <- mclapply(X=1:N,FUN=function(x){
   
   vec.train <-apply(ccle_drug[train,mek.inhib],1,mean)
   
-  cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1,weights=density.weights[train])
-  fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se,weights=density.weights[train])
-  #cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1)
-  #fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se)
+  #cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1,weights=density.weights[train])
+  #fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se,weights=density.weights[train])
+  cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1)
+  fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se)
   return(list(fit,train)) },mc.set.seed=TRUE,mc.cores=6)
   
 

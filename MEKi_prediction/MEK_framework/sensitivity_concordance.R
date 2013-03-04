@@ -18,81 +18,58 @@ x <- rank(apply(mek.sanger.ic50[tmp,],1,mean))
 y <- rank(-1*apply(mek.ActArea[tmp,],1,mean),ties.method=)
 
 par(mfrow=c(1,1))
-plot(x,y,pch=20,xlab="sanger ranks",ylab= "ccle ranks")
-plot(density(abs(x-y)[tmp]))
-hist(abs(x-y)[tmp],breaks=70,col="blue")
-abline(v=quantile(abs(x-y),probs=c(.25,.5,.75)),col="red")
-plot(x[tmp],y[tmp],pch=20)
 fit <- rlm(y~x)
+plot(x,y,pch=20,xlab="sanger ranks",ylab= "ccle ranks")
 summary(fit)
 abline(a=fit$coefficients[1],b=fit$coefficients[2],col="orangered",lty=2,lwd=4)
-cor.test(x,y)
-quantile(fit$residuals,probs=c(.25,.75))
-plot(fit$residuals)
-hist(fit$residuals,breaks=30,xlim=c(-2,2))
-plot(x,y,pch=20,col=rainbow(7)[exp((abs(fit$residuals)))])
+# plot(density(abs(x-y)[tmp]))
+# abline(v=quantile(abs(x-y),probs=c(.75)),col="red")
 
-boxplot(abs(fit$residuals))
-#plot(fit$residuals)
-plot(x,y,pch=20,col=rainbow(10)[exp(abs(fit$residuals))])
-abline(a=fit$coefficients[1],b=fit$coefficients[2],col="gray50",lty=2,lwd=4)
 
-tissue.color <- as.numeric(factor(gsub("^.*?_(.*)","\\1",tmp)))
-plot(x,y,pch=20,col=rainbow(23)[as.numeric(tissue.color)])
-     
-cor.test(x,-log(y))
+# # asesss if the distribution of sensitivity is affected by the tissue type
+# tissue.color <- as.numeric(factor(gsub("^.*?_(.*)","\\1",tmp)))
+# plot(x,y,pch=20,col=rainbow(23)[as.numeric(tissue.color)])
 
-new.weight <- 1/exp(abs(fit$residuals))
-
-new.weight  <- (new.weight-min(new.weight))/max(new.weight)
-min(new.weight)
-max(new.weight)
-hist(new.weight,breaks=30)
-final.weight  <- rep(0.5,times=length(mek.cells))
-names(final.weight) <- names(mek.cells)
-final.weight[names(new.weight)] <- new.weight
-plot(density(final.weight))
-
-# plot the concordance of these IC50
-plot(density(x))
-plot(density(-log(y)))
-range <- seq(from=0,to=1,by=.01)
-
-res1 <- c()  
-a <- sort(x)
-  b <- sort(y)  
-for(i in c(1: length(a))){
-  
-
-a1 <- a
-  a1 <- rep(0,times=length(a1))
-  a1[(length(a1)-i):length(a1)] <- 1
-  names(a1) <- names(a)
-  res <- c()
-  for(j in 1:(length(b)-2)){
-  b1=b
-  b1 <- rep(0,times=length(b1))
-  b1[(length(b1)-j):length(b1)] <- 1
-  names(b1) <- names(b)
-  res <- c(res,-log10(fisher.test(a1,b1,alternative="greater")$p.value))
-  }
-res1 <- c(res1,res)
-} 
-
-  plot(density(res1))
-  
-  for(i in range){
-    ab <-c(ab,length(intersect(a[i:72],b[j:72])))
-  }
-  concordant <- c(concordant,ab)
+# for each sanger rank result, infer the ActArea from our model:
+predicted.sanger.ActArea <- c()
+predicted.rank <- as.numeric(format(fit$fitted.values,digits=1))
+names(predicted.rank) <- names(fit$fitted.values)
+for(i in 1:length(predicted.rank)){
+  predicted.sanger.ActArea <-c(predicted.sanger.ActArea, mean(mek.ActArea[names(which(y==predicted.rank[i])),]))
 }
-plot(density(concordant))
-z <- rep(range,times=length(range))
-w <- rep(range,each=length(range))
+names(predicted.sanger.ActArea) <- names(predicted.rank)
+plot(predicted.sanger.ActArea,x)
+
+# plot the true concordant ones
+true.concordant <- names(which(abs(fit$residuals)<quantile(abs(fit$residuals),probs=.5)))
+plot(x[true.concordant],y[true.concordant],pch=19)
 
 
-library(scatterplot3d)
-scatterplot3d(z,w,concordant,pch=20)
+#train model
+N <- 10
+PARAL1 <- mclapply(X=1:N,FUN=function(x){
+train <- sample(true.concordant,replace=TRUE)
+vec.train1 <-apply(ccle_drug[train,mek.inhib],1,mean)
+
+cv.fit1 <- cv.glmnet(t(global.matrix[,train]), y=vec.train1,nfolds=5, alpha=.1)
+fit1 <- glmnet(x=t(global.matrix[,train]),y=vec.train1,alpha=.1,lambda=cv.fit1$lambda.1se)
+  
+  return(list(fit1,train)) },
+                  mc.set.seed=TRUE,mc.cores=6)
+
+yhat.ccle <- c()
+for(i in c(1:N)){
+  train <- PARAL1[[i]][[2]]
+  fit1 <- PARAL1[[i]][[1]]
+  val <-tmp[-which(tmp %in% true.concordant)]
+  yhat.ccle <- c(yhat.ccle,list(predict(fit1, t(global.matrix[,val]))))
+}
+
+# compute the RMSE for our strategy yhat - y ccle
+RMSE1 <- sapply(1:N,function(z){sqrt(mean((yhat.ccle[[z]] - apply(ccle_drug[rownames(yhat.ccle[[z]]),mek.inhib],1,mean))^2))})
+RMSE2 <- sapply(1:N,function(z){sqrt(mean((yhat.ccle[[z]] - predicted.sanger.ActArea[rownames(yhat.ccle[[z]])])^2))})
 
 
-which(a)
+boxplot(list(RMSE1=RMSE1,RMSE2=RMSE2))
+stripchart(list(RMSE1=RMSE1,RMSE2=RMSE2),method="jitter",vertical=TRUE,pch=19,col="red",add=TRUE)
+
