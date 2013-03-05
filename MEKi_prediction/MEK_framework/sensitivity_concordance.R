@@ -15,14 +15,15 @@ source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/l
 ###################################################################################################
 tmp <- intersect(rownames(mek.sanger.ic50),rownames(mek.ActArea))
 x <- rank(apply(mek.sanger.ic50[tmp,],1,mean))
-y <- rank(-1*apply(mek.ActArea[tmp,],1,mean),ties.method=)
+y <- rank(-1*apply(mek.ActArea[tmp,],1,mean))
 
-par(mfrow=c(1,1))
+par(mfrow=c(1,2))
 fit <- rlm(y~x)
-plot(x,y,pch=20,xlab="sanger ranks",ylab= "ccle ranks")
-summary(fit)
-abline(a=fit$coefficients[1],b=fit$coefficients[2],col="orangered",lty=2,lwd=4)
-# plot(density(abs(x-y)[tmp]))
+#fit <- loess(y~x)
+plot(x,y,pch=19,xlab="sanger ranks",ylab= "ccle ranks")
+abline(fit)
+#abline(a=fit$coefficients[1],b=fit$coefficients[2],col="orangered",lty=2,lwd=4)
+
 # abline(v=quantile(abs(x-y),probs=c(.75)),col="red")
 
 
@@ -30,20 +31,35 @@ abline(a=fit$coefficients[1],b=fit$coefficients[2],col="orangered",lty=2,lwd=4)
 # tissue.color <- as.numeric(factor(gsub("^.*?_(.*)","\\1",tmp)))
 # plot(x,y,pch=20,col=rainbow(23)[as.numeric(tissue.color)])
 
+
+
+# plot the true concordant ones
+plot(density(abs(x-y)))
+abline(v=quantile(abs(x-y),probs=.4),col="red")
+true.concordant <- names(which(abs(x-y)<quantile(abs(x-y),probs=.4)))
+length(true.concordant)
+fit <- rlm(y[true.concordant]~x[true.concordant])
+abline(fit,col="red")
+#true.concordant <- names(which(abs(fit$residuals)<quantile(abs(fit$residuals),probs=.5)))
+plot(x[true.concordant],y[true.concordant],pch=19)
+
+# plot the Actarea and IC50 of these cells
+#plot(apply(mek.sanger.ic50[true.concordant,],1,mean),apply(mek.ActArea[true.concordant,],1,mean),xlab="sanger ic50",ylab="ccle ActArea",pch=20)
+#fit <- rlm(apply(mek.ActArea[true.concordant,],1,mean)~apply(mek.sanger.ic50[true.concordant,],1,mean))
+#new.fit <- rlm(y[true.concordant]~x[true.concordant])
+#abline(new.fit)
+#plot(x,y,pch=19)
+#abline(a=new.fit$coefficients[1],b=new.fit$coefficients[2],lty=2,col="orangered",lwd=3)
+
 # for each sanger rank result, infer the ActArea from our model:
 predicted.sanger.ActArea <- c()
-predicted.rank <- as.numeric(format(fit$fitted.values,digits=1))
-names(predicted.rank) <- names(fit$fitted.values)
+predicted.rank <- as.numeric(format(x*fit$coefficients[2] +fit$coefficients[1],digits=1))
+names(predicted.rank) <- names(x)
 for(i in 1:length(predicted.rank)){
   predicted.sanger.ActArea <-c(predicted.sanger.ActArea, mean(mek.ActArea[names(which(y==predicted.rank[i])),]))
 }
 names(predicted.sanger.ActArea) <- names(predicted.rank)
-plot(predicted.sanger.ActArea,x)
-
-# plot the true concordant ones
-true.concordant <- names(which(abs(fit$residuals)<quantile(abs(fit$residuals),probs=.5)))
-plot(x[true.concordant],y[true.concordant],pch=19)
-
+plot(x,predicted.sanger.ActArea)
 
 #train model
 N <- 10
