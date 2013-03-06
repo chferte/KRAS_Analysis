@@ -2,7 +2,6 @@
 # Sage Bionetworks
 # 14 Feb 2012
 
-
 #load the different packages
 options(stringsAsFactors=FALSE)
 
@@ -70,6 +69,8 @@ sanger_cnv <- sanger_cnv[,mek.sanger.cells]
 sanger_mut <- sanger_mut[mek.sanger.cells,]
 sanger_drug <- sanger_drug[mek.sanger.cells,]
 
+global.matrix2 <- rbind(sanger_exp,sanger_cnv)
+
 # ####################################################################################################
 # # define the NSCLC Breast Lung Melanoma Glioma & heMal (hematological malignacies) cells
 # ####################################################################################################
@@ -83,3 +84,5 @@ sanger_drug <- sanger_drug[mek.sanger.cells,]
 # glioma.mek.cells <-  intersect(mek.cells,sanger_info$sanger.name[sanger_info$Histology =="glioma"])
 # hemal.mek.cells <- intersect(mek.cells,sanger_info$sanger.name[sanger_info$Histology %in% c("haematopoietic_neoplasm","lymphoid_neoplasm")])
 # 
+
+#
