@@ -6,7 +6,6 @@
 # load the data
 #############################
 source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_mek_ccle.R")
-require(mixtools)
 
 #######################################################
 # predictive modeling
@@ -21,20 +20,6 @@ rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""),paste(rowna
 # eigengenes <- t(eigengenes[colnames(global.matrix),c(1:30)])
 # global.matrix2 <- rbind(global.matrix,eigengenes)
 # rownames(global.matrix2) <- c(rownames(global.matrix),paste("PC",c(1:30),sep=""))
-
-par(mfrow=c(2,4),oma=c(0,0,6,0))
-cells <- list(mek.cells,nsclc.mek.cells,breast.mek.cells,crc.mek.cells,hemal.mek.cells,glioma.mek.cells,melanoma.mek.cells)
-cell.names <- list("ALL CELLS","NSCLC","BREAST","CRC","Hematologic\nMalignancies","GLIOMA","MELANOMA")
-for(i in c(1:length(cells))){
-  plot(density(apply(ccle_drug[cells[[i]],mek.inhib],1,mean)),xlim=c(-2,8.5),main=paste(cell.names[[i]]),ylim=c(0,.8),lwd=3)
-}
-title(main="Distribution of the sensitivity of cell lines to MEK inhibitors according to tissue type \n(sensitivity assessed by ActArea)",
-      sub="sensitivity was assessed by ActArea",outer=TRUE)
-
-
-blah <- apply(ccle_drug[crc.mek.cells,mek.inhib],1,mean)
-abc <- normalmixEM(blah)
-plot(abc,density=T)
 
 # assign weights 
 # mean.mek.sens <- apply(ccle_drug[mek.cells,mek.inhib],1,mean)
