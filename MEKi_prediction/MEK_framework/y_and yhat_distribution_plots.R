@@ -78,7 +78,7 @@ title(main="Distribution of the yhats of the MEK inhibitors according to tissue 
 # plot the distribution of yhats of MEK ActArea (ie: plot the y)
 ################################################################################################################
 
-par(mfrow=c(3,5),oma=c(0,0,0,0))
+par(mfrow=c(2,5),oma=c(0,0,0,0))
 cells <- list(mek.cells,nsclc.mek.cells,breast.mek.cells,crc.mek.cells,hemal.mek.cells,glioma.mek.cells,melanoma.mek.cells)
 cell.names <- list("ALL CELLS","NSCLC","BREAST","CRC","Hematologic\nMalignancies","GLIOMA","MELANOMA")
 yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.glioma,yhat.melanoma)
@@ -88,7 +88,7 @@ for(j in c(1:length(cells)))
   PPV <- c()
   NPV <- c()
   Accuracy <- c()
-  threshold <- seq(from=0,to=1,by=.001)
+  threshold <- seq(from=0,to=1,by=.01)
   for(k in threshold){
   
   #assemble the yhats in a median vector abc  
@@ -98,38 +98,44 @@ for(j in c(1:length(cells)))
   for(i in c(1:N)){abc[rownames(yhats[[j]][[i]]),i] <- yhats[[j]][[i]]}
    predicted.sensitivity <- apply(abc,1,median,na.rm=TRUE)
   top.predicted.cells <- ifelse(predicted.sensitivity>=quantile(predicted.sensitivity,probs=k),1,0)
-  #def <- apply(ccle_drug[cells[[j]],mek.inhib],1,mean)
+  bottom.predicted.cells <- ifelse(predicted.sensitivity<=quantile(predicted.sensitivity,probs=k),1,0)
+    #def <- apply(ccle_drug[cells[[j]],mek.inhib],1,mean)
   #top.true.cells <- ifelse(def>=quantile(def,probs=k),1,0)
    top.true.cells <- ifelse(cell.status[[j]]=="sens",1,0)
+    bottom.true.cells <- ifelse(cell.status[[j]]=="res",1,0)
     tmp <- rownames(abc)
     top.predicted.cells <- top.predicted.cells[tmp]
     top.true.cells <- top.true.cells[tmp]
+    bottom.predicted.cells <- bottom.predicted.cells[tmp]
+    bottom.true.cells <- bottom.true.cells[tmp]
    PPV <- c(PPV,length(which(top.predicted.cells==1 & top.true.cells==1))/length(which(top.predicted.cells==1)))
-  NPV <- c(NPV,length(which(top.predicted.cells==0 & top.true.cells==0))/length(which(top.predicted.cells==0)))
+  NPV <- c(NPV,length(which(bottom.predicted.cells==1 & bottom.true.cells==1))/length(which(bottom.predicted.cells==1)))
   Accuracy <- c(Accuracy,(length(which(top.predicted.cells==1 & top.true.cells==1)) + length(which(top.predicted.cells==0 & top.true.cells==0)))/length(top.predicted.cells))
    pred <- prediction(predicted.sensitivity, top.true.cells)
    perf <- performance(pred, measure = "tpr", x.measure = "fpr")
   auc <- performance(pred,"auc")
-    auc <- format(unlist(slot(auc, "y.values")),digits=3)
+    auc <- format(unlist(slot(auc, "y.values")),digits=2)
   cor <- cor(abc,all.prob[[j]][rownames(abc),1],method="spearman",use="pairwise.complete.obs")
   }
   title.name <- paste(cell.names[[j]],"n=",length(cells[[j]]))
   boxplot(cor,main=paste(title.name,"\nCorrelation"),outline=FALSE,ylab="spearman rho",ylim=c(-0.4,1))
   abline(h=c(-.4,-.2,0,.2,.4,.6,.8,1),lty=2,cex=.8,col="gray60")
-  stripchart(cor,col="red",add=TRUE,vertical=TRUE,method="jitter",pch=19)
-  plot(perf, lwd=3,main=paste(title.name,"\nAUC"))
-  text(x=.6,y=.2,labels=paste("AUC=",auc),cex=.8)
+  stripchart(cor,col="orange",add=TRUE,vertical=TRUE,method="jitter",pch=19)
+  plot(perf, lwd=3,main=paste(title.name,"\nAUC"),col="orange")
+  text(x=.6,y=.2,labels=paste("AUC=",auc),cex=.8,font=2)
   abline(b=1,a=0,lty=2,cex=.8,col="gray60")
-  plot(threshold,Accuracy,main=paste(title.name,"\nAccuracy"),ylim=c(0,1),type="l",lwd=3, cex.axis=.9)  
+
+  plot(threshold,Accuracy,main=paste(title.name,"\nAccuracy"),ylim=c(0,1),type="l",lwd=3, col="orange",cex.axis=.9)  
   abline(v=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")  
   abline(h=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")
-  plot(threshold,PPV,main=paste(title.name,"\nPositive Predicted Value"),ylim=c(0,1),type="l",lwd=3, cex.axis=.9,xlim=c(.5,1))
-  abline(v=c(.5,.6,.7,.8,.9,1),lty=2,cex=.8,col="gray60")  
-  abline(h=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")
-  plot(threshold,NPV,main=paste(title.name,"\nNegative Predicted value"),ylim=c(0,1),type="l",lwd=3, cex.axis=.9,xlim=c(0,.5))
-  abline(v=c(0,.1,.2,.3,.4,.5),lty=2,cex=.8,col="gray60")  
+  
+  plot(threshold,NPV,main=paste(title.name,"\nNegative Predicted value"),ylim=c(0,1),col="red",type="l",lwd=3, cex.axis=.9,xlim=c(0,1))
+  abline(v=c(0,.2,.4,.6,.8,1),lty=2,cex=.8,col="gray60")  
   abline(h=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")
 
+  plot(threshold,PPV,main=paste(title.name,"\nPositive Predicted Value"),col="green",ylim=c(0,1),type="l",lwd=3, cex.axis=.9,xlim=c(0,1))
+  abline(v=c(0,.2,.4,.6,.8,1),lty=2,cex=.8,col="gray60")  
+  abline(h=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")
 }
 
 
