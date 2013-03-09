@@ -17,8 +17,8 @@ cell.names <- list("ALL CELLS","NSCLC","BREAST","CRC","Hematologic\nMalignancies
 yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.glioma,yhat.melanoma)
 
 # cell status: sensitive are the ones >.6, res are <.4, inter are the rest !
-limit.sens <- .7
-limit.res <- .3
+limit.sens <- .6
+limit.res <- .4
 cell.status <- sapply(1:length(cell.names),function(x){ifelse(all.prob[[x]][,1]>limit.sens,"sens",ifelse(all.prob[[x]][,1]<limit.res,"res","inter"))})
 names(cell.status) <- cell.names
 
@@ -88,7 +88,7 @@ for(j in c(1:length(cells)))
   PPV <- c()
   NPV <- c()
   Accuracy <- c()
-  threshold <- seq(from=0,to=1,by=.01)
+  threshold <- seq(from=0,to=1,by=.001)
   for(k in threshold){
   
   #assemble the yhats in a median vector abc  
@@ -114,21 +114,21 @@ for(j in c(1:length(cells)))
   cor <- cor(abc,all.prob[[j]][rownames(abc),1],method="spearman",use="pairwise.complete.obs")
   }
   title.name <- paste(cell.names[[j]],"n=",length(cells[[j]]))
-  boxplot(cor,main=paste(title.name,"\nCorrelation"),outline=FALSE,ylab="spearman rho",ylim=c(-0.3,1))
-  abline(h=c(0),lty=2,cex=.8,col="gray60")
+  boxplot(cor,main=paste(title.name,"\nCorrelation"),outline=FALSE,ylab="spearman rho",ylim=c(-0.4,1))
+  abline(h=c(-.4,-.2,0,.2,.4,.6,.8,1),lty=2,cex=.8,col="gray60")
   stripchart(cor,col="red",add=TRUE,vertical=TRUE,method="jitter",pch=19)
   plot(perf, lwd=3,main=paste(title.name,"\nAUC"))
   text(x=.6,y=.2,labels=paste("AUC=",auc),cex=.8)
   abline(b=1,a=0,lty=2,cex=.8,col="gray60")
   plot(threshold,Accuracy,main=paste(title.name,"\nAccuracy"),ylim=c(0,1),type="l",lwd=3, cex.axis=.9)  
-  abline(h=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")  
-  abline(v=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")
-  plot(threshold,PPV,main=paste(title.name,"\nPositive Predicted Value"),ylim=c(0,1),type="l",lwd=3, cex.axis=.9)
-  abline(h=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")  
-  abline(v=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")
-  plot(threshold,NPV,main=paste(title.name,"\nNegative Predicted value"),ylim=c(0,1),type="l",lwd=3, cex.axis=.9)
-  abline(h=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")  
-  abline(v=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")
+  abline(v=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")  
+  abline(h=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")
+  plot(threshold,PPV,main=paste(title.name,"\nPositive Predicted Value"),ylim=c(0,1),type="l",lwd=3, cex.axis=.9,xlim=c(.5,1))
+  abline(v=c(.5,.6,.7,.8,.9,1),lty=2,cex=.8,col="gray60")  
+  abline(h=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")
+  plot(threshold,NPV,main=paste(title.name,"\nNegative Predicted value"),ylim=c(0,1),type="l",lwd=3, cex.axis=.9,xlim=c(0,.5))
+  abline(v=c(0,.1,.2,.3,.4,.5),lty=2,cex=.8,col="gray60")  
+  abline(h=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")
 
 }
 
