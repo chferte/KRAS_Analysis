@@ -8,14 +8,24 @@
 #############################
 source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_mek_ccle.R")
 ccle_probs_status <- loadEntity("syn1709732")
-ccle_probs_status <- ccle_sens_status$objects$ccle_probs_status
+ccle_probs_status <- ccle_probs_status$objects$ccle_probs_status
 all.prob <- ccle_probs_status[[1]]
 cell.status <- ccle_probs_status[[2]]
+
+cells <- list(mek.cells,nsclc.mek.cells,breast.mek.cells,crc.mek.cells,hemal.mek.cells,glioma.mek.cells,melanoma.mek.cells)
+cell.names <- list("ALL CELLS","NSCLC","BREAST","CRC","Hematologic\nMalignancies","GLIOMA","MELANOMA")
+yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.glioma,yhat.melanoma)
+
+# cell status: sensitive are the ones >.6, res are <.4, inter are the rest !
+limit.sens <- .7
+limit.res <- .3
+cell.status <- sapply(1:length(cell.names),function(x){ifelse(all.prob[[x]][,1]>limit.sens,"sens",ifelse(all.prob[[x]][,1]<limit.res,"res","inter"))})
+names(cell.status) <- cell.names
 
 #############################
 # plot the ActArea & the status
 #############################
-par(mfrow=c(2,4),oma=c(0,0,0,0))
+par(mfrow=c(2,4),oma=c(0,0,4,0))
 for(i in 1:length(all.prob))
 {
   #col.vec <- (apply(all.prob[[i]],1,function(x){names(which(x==max(x)))}))
@@ -23,39 +33,17 @@ for(i in 1:length(all.prob))
   col.vec <- factor(-1*(all.prob[[i]][,1]+1))
   plot(density(apply(ccle_drug[cells[[i]],mek.inhib],1,mean)),lwd=3,main=paste(cell.names[[i]]),xlim=c(-1.5,8),ylim=c(0,1))
   ypos <- abs(rnorm(sd=.04,mean=.8,n=length(rownames(all.prob[[i]]))))
-  points(apply(ccle_drug[rownames(all.prob[[i]]),mek.inhib],1,mean),ypos,col=greenred(length(col.vec))[col.vec],pch=20,cex=1)
+  points(apply(ccle_drug[rownames(all.prob[[i]]),mek.inhib],1,mean),ypos,col=greenred(length(col.vec))[col.vec],pch=20,cex=1.1)
 }
 
-
-################################################################################################################
-# compute mixture models to assign sensitive and resistant cells
-################################################################################################################
-
-require(flexmix)
-
-Nclust <- 2
-
-cells <- list(mek.cells,nsclc.mek.cells,breast.mek.cells,crc.mek.cells,hemal.mek.cells,glioma.mek.cells,melanoma.mek.cells)
-cell.names <- list("ALL CELLS","NSCLC","BREAST","CRC","Hematologic\nMalignancies","GLIOMA","MELANOMA")
-
-
-
-###########################################################################################################################
-tmp <- sapply(c(1:N),function(x){return(PARAL[[x]][[2]])})
-plot(density(apply(ccle_drug[tmp,mek.inhib],1,mean)),xlim=c(-2,8.5),main="training set",ylim=c(0,.8),lwd=3,col="red")
-title(main="Distribution of the sensitivity of cell lines to MEK inhibitors according to tissue type \n(sensitivity assessed by ActArea)",
-      sub="sensitivity was assessed by ActArea",outer=TRUE)
+title(main="Distribution of the sensitivity of cell lines to MEK inhibitors according to tissue type \n(sensitivity assessed by ActArea, red & green colors stand for resistant & sensitive cells)",
+      ,outer=TRUE)
 
 ################################################################################################################
 # plot the distribution of yhats of MEK ActArea (ie: plot the y)
 ################################################################################################################
-
 par(mfrow=c(2,4),oma=c(0,0,4,0))
-
-cells <- list(mek.cells,nsclc.mek.cells,breast.mek.cells,crc.mek.cells,hemal.mek.cells,glioma.mek.cells,melanoma.mek.cells)
-cell.names <- list("ALL","NSCLC","BREAST","CRC","Hematologic\nMalignancies","GLIOMA","MELANOMA")
-yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.glioma,yhat.melanoma)
-threshold <- .8
+threshold <- .85
 for(j in c(1:length(cells)))
   {
 abc <- matrix(NA,nrow=length(cells[[j]]),ncol=N)
@@ -66,13 +54,17 @@ abc <- apply(abc,1,median,na.rm=TRUE)
 plot(density(abc),xlim=c(-2,5.5),main=paste(cell.names[[j]],"yhats"),ylim=c(0,1.4),lwd=2)
 abline(v=quantile(abc,probs=c(.2,.8)),col="red",lty=3)
 top.predicted.cells <- ifelse(abc>quantile(abc,probs=threshold),1,0)
-def <- apply(ccle_drug[cells[[j]],mek.inhib],1,mean)
-top.true.cells <- ifelse(def>quantile(def,probs=threshold),1,0)
-top.true.cells <- ifelse(cell.status[[i]]=="sens",1,0)
+#def <- apply(ccle_drug[cells[[j]],mek.inhib],1,mean)
+#top.true.cells <- ifelse(def>quantile(def,probs=threshold),1,0)
+top.true.cells <- ifelse(cell.status[[j]]=="sens",1,0)
+tmp <- intersect(names(top.true.cells),names(top.predicted.cells))
+top.predicted.cells <- top.predicted.cells[tmp]
+top.true.cells <- top.true.cells[tmp]
 cat("predictive performance when fixing a threshold at the 80th quantile\n",paste("for ",cell.names[[j]]),"cell lines")
 PPV <- length(which(top.predicted.cells==1 & top.true.cells==1))/length(which(top.predicted.cells==1))
 NPV <- length(which(top.predicted.cells==0 & top.true.cells==0))/length(which(top.predicted.cells==0))
 Accuracy <- (length(which(top.predicted.cells==1 & top.true.cells==1)) + length(which(top.predicted.cells==0 & top.true.cells==0)))/length(top.predicted.cells)
+
 print(table(PREDICTED=top.predicted.cells,REALITY=top.true.cells))
 print(paste("PPV=",PPV))
 print(paste("NPV=",NPV))
@@ -86,7 +78,7 @@ title(main="Distribution of the yhats of the MEK inhibitors according to tissue 
 # plot the distribution of yhats of MEK ActArea (ie: plot the y)
 ################################################################################################################
 
-par(mfrow=c(2,3),oma=c(0,0,0,0))
+par(mfrow=c(3,5),oma=c(0,0,0,0))
 cells <- list(mek.cells,nsclc.mek.cells,breast.mek.cells,crc.mek.cells,hemal.mek.cells,glioma.mek.cells,melanoma.mek.cells)
 cell.names <- list("ALL CELLS","NSCLC","BREAST","CRC","Hematologic\nMalignancies","GLIOMA","MELANOMA")
 yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.glioma,yhat.melanoma)
@@ -96,31 +88,51 @@ for(j in c(1:length(cells)))
   PPV <- c()
   NPV <- c()
   Accuracy <- c()
-  threshold <- seq(from=0,to=1,by=.005)
+  threshold <- seq(from=0,to=1,by=.01)
   for(k in threshold){
-   abc <- matrix(NA,nrow=length(cells[[j]]),ncol=N)
+  
+  #assemble the yhats in a median vector abc  
+    abc <- matrix(NA,nrow=length(cells[[j]]),ncol=N)
   rownames(abc) <- cells[[j]]
   colnames(abc) <- c(1:N)
   for(i in c(1:N)){abc[rownames(yhats[[j]][[i]]),i] <- yhats[[j]][[i]]}
-  
-   abc <- apply(abc,1,median,na.rm=TRUE)
-    top.predicted.cells <- ifelse(abc>=quantile(abc,probs=k),1,0)
-  def <- apply(ccle_drug[cells[[j]],mek.inhib],1,mean)
-  top.true.cells <- ifelse(def>=quantile(def,probs=k),1,0)
-  PPV <- c(PPV,length(which(top.predicted.cells==1 & top.true.cells==1))/length(which(top.predicted.cells==1)))
+   predicted.sensitivity <- apply(abc,1,median,na.rm=TRUE)
+  top.predicted.cells <- ifelse(predicted.sensitivity>=quantile(predicted.sensitivity,probs=k),1,0)
+  #def <- apply(ccle_drug[cells[[j]],mek.inhib],1,mean)
+  #top.true.cells <- ifelse(def>=quantile(def,probs=k),1,0)
+   top.true.cells <- ifelse(cell.status[[j]]=="sens",1,0)
+    tmp <- rownames(abc)
+    top.predicted.cells <- top.predicted.cells[tmp]
+    top.true.cells <- top.true.cells[tmp]
+   PPV <- c(PPV,length(which(top.predicted.cells==1 & top.true.cells==1))/length(which(top.predicted.cells==1)))
   NPV <- c(NPV,length(which(top.predicted.cells==0 & top.true.cells==0))/length(which(top.predicted.cells==0)))
   Accuracy <- c(Accuracy,(length(which(top.predicted.cells==1 & top.true.cells==1)) + length(which(top.predicted.cells==0 & top.true.cells==0)))/length(top.predicted.cells))
- }
-  plot(threshold,PPV,main=paste(cell.names[[j]]),ylim=c(0,1),type="l",lwd=3, cex.axis=.9)
+   pred <- prediction(predicted.sensitivity, top.true.cells)
+   perf <- performance(pred, measure = "tpr", x.measure = "fpr")
+  auc <- performance(pred,"auc")
+    auc <- format(unlist(slot(auc, "y.values")),digits=3)
+  cor <- cor(abc,all.prob[[j]][rownames(abc),1],method="spearman",use="pairwise.complete.obs")
+  }
+  title.name <- paste(cell.names[[j]],"n=",length(cells[[j]]))
+  boxplot(cor,main=paste(title.name,"\nCorrelation"),outline=FALSE,ylab="spearman rho",ylim=c(-0.3,1))
+  abline(h=c(0),lty=2,cex=.8,col="gray60")
+  stripchart(cor,col="red",add=TRUE,vertical=TRUE,method="jitter",pch=19)
+  plot(perf, lwd=3,main=paste(title.name,"\nAUC"))
+  text(x=.6,y=.2,labels=paste("AUC=",auc),cex=.8)
+  abline(b=1,a=0,lty=2,cex=.8,col="gray60")
+  plot(threshold,Accuracy,main=paste(title.name,"\nAccuracy"),ylim=c(0,1),type="l",lwd=3, cex.axis=.9)  
   abline(h=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")  
   abline(v=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")
-  plot(threshold,NPV,main=paste(cell.names[[j]]),ylim=c(0,1),type="l",lwd=3, cex.axis=.9)
+  plot(threshold,PPV,main=paste(title.name,"\nPositive Predicted Value"),ylim=c(0,1),type="l",lwd=3, cex.axis=.9)
   abline(h=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")  
   abline(v=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")
-  plot(threshold,Accuracy,main=paste(cell.names[[j]]),ylim=c(0,1),type="l",lwd=3, cex.axis=.9)  
+  plot(threshold,NPV,main=paste(title.name,"\nNegative Predicted value"),ylim=c(0,1),type="l",lwd=3, cex.axis=.9)
   abline(h=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")  
   abline(v=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")
+
 }
+
+
 
 ################################################################################################################
 # plot the RMSE for the prediction of each cell lines
