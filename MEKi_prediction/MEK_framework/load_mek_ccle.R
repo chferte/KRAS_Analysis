@@ -46,33 +46,38 @@ rm(tmp)
 #########################################################################################################################################
 # make the data coherent between exp and cnv to ultimately compute the eigengenes vector
 #########################################################################################################################################
-
-tmp <- intersect(colnames(ccle_exp),ccle_info$CCLE.name)
-tmp <- intersect(tmp,colnames(ccle_cnv))
-ccle_exp <- ccle_exp[,tmp]
-ccle_cnv <- ccle_cnv[,tmp]
-ccle_info <- ccle_info[which(ccle_info$CCLE.name %in% intersect(tmp,ccle_info$CCLE.name)),]
-rm(tmp)
-
-global.matrix <- rbind(ccle_exp,ccle_cnv)
-tissue.origin <- as.factor(ccle_info$Site.Primary)
-# s <- fast.svd(global.matrix-rowMeans(global.matrix))
-# par(mfrow=c(1,1))
 # 
-# # percentage variance explained
-# plot(s$d^2/sum(s$d^2),pch=20)
+# tmp <- intersect(colnames(ccle_exp),ccle_info$CCLE.name)
+# tmp <- intersect(tmp,colnames(ccle_cnv))
+# #tmp <- intersect(tmp, colnames(ccle_mut))
+# ccle_exp <- ccle_exp[,tmp]
+# ccle_cnv <- ccle_cnv[,tmp]
+# #ccle_mut <- ccle_mut[,tmp]
+# ccle_info <- ccle_info[which(ccle_info$CCLE.name %in% intersect(tmp,ccle_info$CCLE.name)),]
+# rm(tmp)
 # 
-# # plot first and second svd
-# plot(s$v[,1],s$v[,2],col=rainbow(24)[tissue.origin],pch=20,cex=1.5, xlab="PC1",ylab="PC2")
-# plot.new()
-# legend(0,1,legend=levels(tissue.origin),cex=.8,col=rainbow(24),pch=20,text.width=.4,text.font=2,
-#        text.col=rainbow(24))
+#  global.matrix <- rbind(ccle_exp,ccle_cnv,ccle_mut)
+#  tissue.origin <- as.factor(ccle_info$Site.Primary)
+#  names(tissue.origin) <- ccle_info$CCLE.name
+#  s <- svd(global.matrix-rowMeans(global.matrix))
+# 
+#  # percentage variance explained
+#  plot(s$d^2/sum(s$d^2),pch=20)
+#  
+#  # plot first and second svd
+#  plot(s$v[,1],s$v[,2],col=rainbow(24)[tissue.origin],pch=20,cex=1.5, xlab="PC1",ylab="PC2")
+# plot(s$v[,3],s$v[,2],col=rainbow(24)[tissue.origin],pch=20,cex=1.5, xlab="PC3",ylab="PC4")
+# # par(mfrow=c(1,1))
+# # plot.new()
+#  legend(0,1,legend=levels(tissue.origin),cex=.8,col=rainbow(24),pch=20,text.width=.4,text.font=2,
+#         text.col=rainbow(24))
 # 
 # # assign values for the eigengenes since they discriminate well the tissue specificity
 # eigengenes <- s$v
 # rownames(eigengenes) <- colnames(ccle_exp)
 # colnames(eigengenes) <- paste("PC_",seq(from=1,to=ncol(eigengenes),by=1),sep="")
 
+# rm(global.matrix)
 #########################################################################################################
 ## feature selection for low variance
 #########################################################################################################
@@ -94,7 +99,7 @@ ccle_exp <- ccle_exp[,tmp]
 ccle_cnv <- ccle_cnv[,tmp]
 ccle_mut <- ccle_mut[,tmp]
 ccle_drug <- ccle_drug[tmp,]
-ccle_info <- ccle_info[which(ccle_info$CCLE.name %in% intersect(tmp,ccle_info$CCLE.name)),]
+ccle_info <- ccle_info[tmp,]
 rm(tmp)
 
 # identify the mek inhibitors
@@ -111,11 +116,11 @@ ccle_exp <- ccle_exp[,mek.cells]
 ccle_cnv <- ccle_cnv[,mek.cells]
 ccle_mut <- ccle_mut[,mek.cells]
 ccle_drug <- ccle_drug[mek.cells,]
+ccle_info <- ccle_info[mek.cells,]
 
 ####################################################################################################
 # define the NSCLC Breast Lung Melanoma Glioma & heMal (hematological malignacies) cells
 ####################################################################################################
-#mek.cells <- clean.concordant.cells
 carcinoma.mek.cells <-  intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology =="carcinoma"])
 nsclc.mek.cells <- carcinoma.mek.cells[grep(pattern="LUNG",x=carcinoma.mek.cells)]
 nsclc.mek.cells <- intersect(nsclc.mek.cells,ccle_info$CCLE.name[ ccle_info$Hist.Subtype1 !="small_cell_carcinoma"])
@@ -124,4 +129,6 @@ breast.mek.cells <- carcinoma.mek.cells[grep(pattern="BREAST",x=carcinoma.mek.ce
 melanoma.mek.cells <-  intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology =="malignant_melanoma"])
 glioma.mek.cells <-  intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology =="glioma"])
 hemal.mek.cells <- intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology %in% c("haematopoietic_neoplasm","lymphoid_neoplasm")])
-
+lung.adk.mek.cells <-  intersect(nsclc.mek.cells,ccle_info$CCLE.name[ ccle_info$Hist.Subtype1 =="adenocarcinoma"])
+pancreas.mek.cells <- carcinoma.mek.cells[grep(pattern="PANCREAS",x=carcinoma.mek.cells)]
+ovary.mek.cells <- carcinoma.mek.cells[grep(pattern="OVARY",x=carcinoma.mek.cells)]

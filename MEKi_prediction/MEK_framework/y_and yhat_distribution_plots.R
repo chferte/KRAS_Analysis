@@ -2,6 +2,7 @@
 # sage bionetworks
 # Feb 22th, 2013
 
+library(ROCR)
 
 #############################
 # load the data
@@ -12,9 +13,25 @@ ccle_probs_status <- ccle_probs_status$objects$ccle_probs_status
 all.prob <- ccle_probs_status[[1]]
 cell.status <- ccle_probs_status[[2]]
 
+
+
+ccle_probs_status <- loadEntity("syn1709732")
+ccle_probs_status <- ccle_probs_status$objects$ccle_probs_status
+all.prob <- ccle_probs_status[[1]]
+cell.status <- ccle_probs_status[[2]]
+
 cells <- list(mek.cells,nsclc.mek.cells,breast.mek.cells,crc.mek.cells,hemal.mek.cells,glioma.mek.cells,melanoma.mek.cells)
 cell.names <- list("ALL CELLS","NSCLC","BREAST","CRC","Hematologic\nMalignancies","GLIOMA","MELANOMA")
-yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.glioma,yhat.melanoma)
+
+load("/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/luad_model_yhats.Rda")
+yhats <- luad_model_yhats
+#yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.glioma,yhat.melanoma)
+#yhats <- pure_tissue_models_yhats
+
+#yhats <- global_model_tissue_adjusted_yhats
+
+#load("/home/cferte/RESULTS/MEKi/balanced_model_yhats.Rda")
+#yhats <- balanced_model_yhats
 
 # cell status: sensitive are the ones >.6, res are <.4, inter are the rest !
 limit.sens <- .6
@@ -42,18 +59,20 @@ title(main="Distribution of the sensitivity of cell lines to MEK inhibitors acco
 ################################################################################################################
 # plot the distribution of yhats of MEK ActArea (ie: plot the y)
 ################################################################################################################
+N <- length(yhats[[1]])
 par(mfrow=c(2,4),oma=c(0,0,4,0))
-threshold <- .85
+threshold <- .8
 for(j in c(1:length(cells)))
   {
-abc <- matrix(NA,nrow=length(cells[[j]]),ncol=N)
+abc <- c()
+  abc <- as.data.frame(matrix(NA,nrow=length(cells[[j]]),ncol=N))
 rownames(abc) <- cells[[j]]
 colnames(abc) <- c(1:N)
-for(i in c(1:N)){abc[rownames(yhats[[j]][[i]]),i] <- yhats[[j]][[i]]}
+for(l in c(1:N)){abc[rownames(yhats[[j]][[l]]),l] <- yhats[[j]][[l]]}
 abc <- apply(abc,1,median,na.rm=TRUE)
-plot(density(abc),xlim=c(-2,5.5),main=paste(cell.names[[j]],"yhats"),ylim=c(0,1.4),lwd=2)
-abline(v=quantile(abc,probs=c(.2,.8)),col="red",lty=3)
-top.predicted.cells <- ifelse(abc>quantile(abc,probs=threshold),1,0)
+plot(density(abc,na.rm=TRUE),xlim=c(-2,5.5),main=paste(cell.names[[j]],"yhats"),ylim=c(0,1.4),lwd=2)
+abline(v=quantile(abc,probs=c(.2,.8),na.rm=TRUE),col="red",lty=3)
+top.predicted.cells <- ifelse(abc>=quantile(abc,probs=threshold,na.rm=TRUE),1,0)
 #def <- apply(ccle_drug[cells[[j]],mek.inhib],1,mean)
 #top.true.cells <- ifelse(def>quantile(def,probs=threshold),1,0)
 top.true.cells <- ifelse(cell.status[[j]]=="sens",1,0)
@@ -65,10 +84,11 @@ PPV <- length(which(top.predicted.cells==1 & top.true.cells==1))/length(which(to
 NPV <- length(which(top.predicted.cells==0 & top.true.cells==0))/length(which(top.predicted.cells==0))
 Accuracy <- (length(which(top.predicted.cells==1 & top.true.cells==1)) + length(which(top.predicted.cells==0 & top.true.cells==0)))/length(top.predicted.cells)
 
+
 print(table(PREDICTED=top.predicted.cells,REALITY=top.true.cells))
-print(paste("PPV=",PPV))
-print(paste("NPV=",NPV))
-print(paste("Accuracy=",Accuracy))
+print(paste("Accuracy=",format(Accuracy,digits=2)))
+print(paste("NPV=",format(NPV,digits=2)))
+print(paste("PPV=",format(PPV,digits=2)))
 }
 
 title(main="Distribution of the yhats of the MEK inhibitors according to tissue type \n(sensitivity assessed by ActArea)",outer=TRUE)
@@ -79,10 +99,10 @@ title(main="Distribution of the yhats of the MEK inhibitors according to tissue 
 ################################################################################################################
 
 par(mfrow=c(2,5),oma=c(0,0,0,0))
-cells <- list(mek.cells,nsclc.mek.cells,breast.mek.cells,crc.mek.cells,hemal.mek.cells,glioma.mek.cells,melanoma.mek.cells)
-cell.names <- list("ALL CELLS","NSCLC","BREAST","CRC","Hematologic\nMalignancies","GLIOMA","MELANOMA")
-yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.glioma,yhat.melanoma)
-
+#cells <- list(mek.cells,nsclc.mek.cells,breast.mek.cells,crc.mek.cells,hemal.mek.cells,glioma.mek.cells,melanoma.mek.cells)
+#cell.names <- list("ALL CELLS","NSCLC","BREAST","CRC","Hematologic\nMalignancies","GLIOMA","MELANOMA")
+#yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.glioma,yhat.melanoma)
+#yhats <- pure_tissue_models_yhats
 for(j in c(1:length(cells)))
 {
   PPV <- c()
@@ -116,14 +136,18 @@ for(j in c(1:length(cells)))
   auc <- performance(pred,"auc")
     auc <- format(unlist(slot(auc, "y.values")),digits=2)
   cor <- cor(abc,all.prob[[j]][rownames(abc),1],method="spearman",use="pairwise.complete.obs")
+  
   }
   title.name <- paste(cell.names[[j]],"n=",length(cells[[j]]))
   boxplot(cor,main=paste(title.name,"\nCorrelation"),outline=FALSE,ylab="spearman rho",ylim=c(-0.4,1))
   abline(h=c(-.4,-.2,0,.2,.4,.6,.8,1),lty=2,cex=.8,col="gray60")
   stripchart(cor,col="orange",add=TRUE,vertical=TRUE,method="jitter",pch=19)
+  print(paste("correlation", cell.names[[j]],format(median(cor,na.rm=TRUE),digits=2)))
+  
   plot(perf, lwd=3,main=paste(title.name,"\nAUC"),col="orange")
   text(x=.6,y=.2,labels=paste("AUC=",auc),cex=.8,font=2)
   abline(b=1,a=0,lty=2,cex=.8,col="gray60")
+  print(paste("AUC=", cell.names[[j]],auc))
 
   plot(threshold,Accuracy,main=paste(title.name,"\nAccuracy"),ylim=c(0,1),type="l",lwd=3, col="orange",cex.axis=.9)  
   abline(v=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")  
@@ -137,7 +161,6 @@ for(j in c(1:length(cells)))
   abline(v=c(0,.2,.4,.6,.8,1),lty=2,cex=.8,col="gray60")  
   abline(h=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")
 }
-
 
 
 ################################################################################################################

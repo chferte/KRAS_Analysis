@@ -39,6 +39,8 @@ source("/home/cferte/FELLOW/cferte/KRAS_Analysis/data_input/ccle_load_data.R")
 names(KRAS_CCLE) <- sub(pattern="_LUNG",replacement="",x=names(KRAS_CCLE))
 colnames(CCLE_EXP) <- sub(pattern="_LUNG",replacement="",x=colnames(CCLE_EXP))
 
+# load the mutation luad file
+load("/home/cferte/FELLOW/cferte/KRAS_Analysis/mutations_LUAD.RData")
 
 ##########################################
 # load the Sanger data 
