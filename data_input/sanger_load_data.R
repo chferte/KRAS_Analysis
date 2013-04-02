@@ -48,7 +48,9 @@ KRAS_Sanger[KRAS_Sanger %in% c("G12A","G12F","G12S","G13C","G13D","Q61H")] <- "r
 table(KRAS_Sanger)
 
 # clean up !
-SANGER_EXP <- SangerExpr
-KRAS_SANGER <- KRAS_Sanger
+sanger_exp <- SangerExpr
+sanger_mut <- t(SangerMut)
+sanger_drug <- SangerDrug
+kras_sanger <- KRAS_Sanger
 rm(SangerInfo,SangerExpr,SangerMut,tmp,KRAS_Sanger)
 

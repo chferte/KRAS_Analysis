@@ -81,13 +81,13 @@ rm(tmp)
 #########################################################################################################
 ## feature selection for low variance
 #########################################################################################################
-tmp <- apply(ccle_exp,1,sd)
-ccle_exp <- ccle_exp[which(tmp>quantile(x=tmp,probs=.25)),]
-rm(tmp)
-
-tmp <- apply(ccle_cnv,1,sd)
-ccle_cnv <- ccle_cnv[which(tmp>quantile(x=tmp,probs=.25)),]
-rm(tmp)
+# tmp <- apply(ccle_exp,1,sd)
+# ccle_exp <- ccle_exp[which(tmp>quantile(x=tmp,probs=.2)),]
+# rm(tmp)
+# 
+# tmp <- apply(ccle_cnv,1,sd)
+# ccle_cnv <- ccle_cnv[which(tmp>quantile(x=tmp,probs=.2)),]
+# rm(tmp)
 
 #########################################################################################################
 ## Make the data coherent between all the datasets
