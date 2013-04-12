@@ -74,7 +74,7 @@ rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""))
 
 require(multicore)
 
-N=100
+N=150
 #models <- 0
 i <- 0
 
@@ -168,9 +168,8 @@ for(i in c(1:N)){
 # save the objects
 #####################################################################################################################
 
-#global_model_yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.glioma,yhat.melanoma)
-#save(global_model_yhats,file="/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/global_model_yhats.Rda")
-
+global_model_yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.melanoma,yhat.pancreas,yhat.ovary)
+save(global_model_yhats,file="/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/global_model_yhats.Rda")
 
 # # save it in pure_tissue_models_yhats
 # pure_tissue_models_yhats <- c(pure_tissue_models_yhats,list(yhat.melanoma))
