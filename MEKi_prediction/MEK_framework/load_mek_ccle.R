@@ -132,3 +132,4 @@ hemal.mek.cells <- intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology %
 lung.adk.mek.cells <-  intersect(nsclc.mek.cells,ccle_info$CCLE.name[ ccle_info$Hist.Subtype1 =="adenocarcinoma"])
 pancreas.mek.cells <- carcinoma.mek.cells[grep(pattern="PANCREAS",x=carcinoma.mek.cells)]
 ovary.mek.cells <- carcinoma.mek.cells[grep(pattern="OVARY",x=carcinoma.mek.cells)]
+

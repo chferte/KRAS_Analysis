@@ -17,8 +17,8 @@ require(flexmix)
 
 Nclust <- 2
 
-cells <- list(mek.cells,nsclc.mek.cells,breast.mek.cells,crc.mek.cells,hemal.mek.cells,glioma.mek.cells,melanoma.mek.cells)
-cell.names <- list("ALL CELLS","NSCLC","BREAST","CRC","Hematologic\nMalignancies","GLIOMA","MELANOMA")
+cells <- list(mek.cells,nsclc.mek.cells,breast.mek.cells,crc.mek.cells,hemal.mek.cells,glioma.mek.cells,melanoma.mek.cells,pancreas.mek.cells,ovary.mek.cells)
+cell.names <- list("ALL CELLS","NSCLC","BREAST","CRC","Hematologic\nMalignancies","GLIOMA","MELANOMA","PANCREATIC","OVARY")
 
 #################
 all.prob <- c()
@@ -78,7 +78,7 @@ for(i in c(1:length(cells))){
 ###################
 # plot the ActArea density plot and the distribution of status (sens, res, inter)
 ##################
-par(mfrow=c(2,4),oma=c(0,0,0,0))
+par(mfrow=c(2,5),oma=c(0,0,0,0))
 for(i in 1:length(all.prob))
 {
   #col.vec <- (apply(all.prob[[i]],1,function(x){names(which(x==max(x)))}))
