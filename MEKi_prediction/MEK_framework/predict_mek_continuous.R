@@ -16,16 +16,21 @@ all.prob <- ccle_probs_status[[1]]
 cell.status <- ccle_probs_status[[2]]
 
 
-
 #######################################################
 # predictive modeling
-# we predict the ic50 
-# training all cells global matrix without eigengenes and with eigengenes in parallel
+# we predict the ActArea 
+# training in the gene expression data of all cells. 
 #######################################################
 
 # define globalmatrix (without eigengenes)
-global.matrix <- rbind(ccle_exp,ccle_cnv,ccle_mut)
-rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""),paste(rownames(ccle_cnv),"_cnv",sep=""),paste(rownames(ccle_mut),"_mut",sep=""))
+#global.matrix <- rbind(ccle_exp,ccle_cnv,ccle_mut)
+#rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""),paste(rownames(ccle_cnv),"_cnv",sep=""),paste(rownames(ccle_mut),"_mut",sep=""))
+
+# define globalmatrix (gene expression only)
+global.matrix <- ccle_exp
+rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""))
+
+
 
 # # define globalmatrix (with tissue specificity)
 # abc <- model.matrix(~tissue.origin)
@@ -93,7 +98,8 @@ PARAL <- mclapply(X=1:N,FUN=function(x){
 #{
   
   #standard sampling
-  train <- sample(mek.cells[-which(mek.cells %in% c(hemal.mek.cells,glioma.mek.cells,melanoma.mek.cells))],replace=TRUE)
+  train <- sample(mek.cells,replace=TRUE)
+  #train <- sample(mek.cells[-which(mek.cells %in% c(hemal.mek.cells,glioma.mek.cells,melanoma.mek.cells))],replace=TRUE)
   
   # balanced model
   #train <- c(sample(x=c(Q1),replace=TRUE,size=220),sample(Q4,replace=TRUE,size=220))
@@ -133,7 +139,8 @@ yhat.all <- c()
 yhat.breast <- c()
 yhat.nsclc <- c()
 yhat.crc <- c()
-yhat.glioma <- c()
+yhat.pancreas <- c()
+yhat.ovary <- c()
 yhat.melanoma <- c()
 yhat.hemal  <- c()
 selected <- c()
@@ -151,10 +158,11 @@ for(i in c(1:N)){
 #   yhat.glioma <- c(yhat.glioma,list(predict(fit,t(global.matrix[,glioma.mek.cells]))))
 #   yhat.melanoma <- c(yhat.melanoma,list(predict(fit,t(global.matrix[,melanoma.mek.cells]))))
 #   yhat.hemal <- c(yhat.hemal,list(predict(fit,t(global.matrix[,hemal.mek.cells]))))
-#   #yhat.glioma <- c(yhat.glioma,list(predict(fit,t(global.matrix[,glioma.mek.cells[-which(glioma.mek.cells %in% train)]]))))
-#   #yhat.melanoma <- c(yhat.melanoma,list(predict(fit,t(global.matrix[,melanoma.mek.cells[-which(melanoma.mek.cells %in% train)]]))))
-#   #yhat.hemal <- c(yhat.hemal,list(predict(fit,t(global.matrix[,hemal.mek.cells[-which(hemal.mek.cells %in% train)]]))))
-#   print(i)}  
+  yhat.pancreas <- c(yhat.pancreas,list(predict(fit,t(global.matrix[,pancreas.mek.cells[-which(pancreas.mek.cells %in% train)]]))))
+  yhat.ovary <- c(yhat.ovary,list(predict(fit,t(global.matrix[,ovary.mek.cells[-which(ovary.mek.cells %in% train)]]))))
+  yhat.melanoma <- c(yhat.melanoma,list(predict(fit,t(global.matrix[,melanoma.mek.cells[-which(melanoma.mek.cells %in% train)]]))))
+  yhat.hemal <- c(yhat.hemal,list(predict(fit,t(global.matrix[,hemal.mek.cells[-which(hemal.mek.cells %in% train)]]))))
+  print(i)}  
 
 #####################################################################################################################
 # save the objects
