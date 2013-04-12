@@ -65,8 +65,8 @@ luad_kras <- assign(names(luad_all)[3],luad_all[[3]])
 # rat <- gsub(pattern=" ",replacement="",x=rat)
 # paste(rat,collapse=" ")
 
-rat <- "KEGG_TERPENOID_BACKBONE_BIOSYNTHESIS KEGG_BIOSYNTHESIS_OF_UNSATURATED_FATTY_ACIDS KEGG_HEMATOPOIETIC_CELL_LINEAGE KEGG_OLFACTORY_TRANSDUCTION KEGG_ASTHMA BIOCARTA_RANKL_PATHWAY BIOCARTA_IL17_PATHWAY MIPS_60S_RIBOSOMAL_SUBUNIT_CYTOPLASMIC MIPS_ANTI_BHC110_COMPLEX MIPS_DDB2_COMPLEX MIPS_12S_U11_SNRNP MIPS_SMN_COMPLEX MIPS_CENP_A_NAC_CAD_COMPLEX MIPS_POLYCYSTIN_1_MULTIPROTEIN_COMPLEX REACTOME_GENERIC_TRANSCRIPTION_PATHWAY REACTOME_P75NTR_SIGNALS_VIA_NFKB REACTOME_SIGNALING_BY_GPCR REACTOME_METABOLISM_OF_POLYAMINES REACTOME_ADP_SIGNALLING_THROUGH_P2RY1 REACTOME_GPCR_DOWNSTREAM_SIGNALING REACTOME_PD1_SIGNALING REACTOME_SIGNAL_AMPLIFICATION REACTOME_ZINC_TRANSPORTERS REACTOME_THROMBOXANE_SIGNALLING_THROUGH_TP_RECEPTOR REACTOME_ADP_SIGNALLING_THROUGH_P2RY12 REACTOME_ACTIVATION_OF_THE_AP1_FAMILY_OF_TRANSCRIPTION_FACTORS REACTOME_CALNEXIN_CALRETICULIN_CYCLE REACTOME_N_GLYCAN_TRIMMING_IN_THE_ER_AND_CALNEXIN_CALRETICULIN_CYCLE REACTOME_ADVANCED_GLYCOSYLATION_ENDPRODUCT_RECEPTOR_SIGNALING REACTOME_HEMOSTASIS REACTOME_EARLY_PHASE_OF_HIV_LIFE_CYCLE"
-rat <- unlist(strsplit(x=rat,split=" "))
+#rat <- "KEGG_TERPENOID_BACKBONE_BIOSYNTHESIS KEGG_BIOSYNTHESIS_OF_UNSATURATED_FATTY_ACIDS KEGG_HEMATOPOIETIC_CELL_LINEAGE KEGG_OLFACTORY_TRANSDUCTION KEGG_ASTHMA BIOCARTA_RANKL_PATHWAY BIOCARTA_IL17_PATHWAY MIPS_60S_RIBOSOMAL_SUBUNIT_CYTOPLASMIC MIPS_ANTI_BHC110_COMPLEX MIPS_DDB2_COMPLEX MIPS_12S_U11_SNRNP MIPS_SMN_COMPLEX MIPS_CENP_A_NAC_CAD_COMPLEX MIPS_POLYCYSTIN_1_MULTIPROTEIN_COMPLEX REACTOME_GENERIC_TRANSCRIPTION_PATHWAY REACTOME_P75NTR_SIGNALS_VIA_NFKB REACTOME_SIGNALING_BY_GPCR REACTOME_METABOLISM_OF_POLYAMINES REACTOME_ADP_SIGNALLING_THROUGH_P2RY1 REACTOME_GPCR_DOWNSTREAM_SIGNALING REACTOME_PD1_SIGNALING REACTOME_SIGNAL_AMPLIFICATION REACTOME_ZINC_TRANSPORTERS REACTOME_THROMBOXANE_SIGNALLING_THROUGH_TP_RECEPTOR REACTOME_ADP_SIGNALLING_THROUGH_P2RY12 REACTOME_ACTIVATION_OF_THE_AP1_FAMILY_OF_TRANSCRIPTION_FACTORS REACTOME_CALNEXIN_CALRETICULIN_CYCLE REACTOME_N_GLYCAN_TRIMMING_IN_THE_ER_AND_CALNEXIN_CALRETICULIN_CYCLE REACTOME_ADVANCED_GLYCOSYLATION_ENDPRODUCT_RECEPTOR_SIGNALING REACTOME_HEMOSTASIS REACTOME_EARLY_PHASE_OF_HIV_LIFE_CYCLE"
+#rat <- unlist(strsplit(x=rat,split=" "))
 
 mask <- luad_kras=="G12C" | luad_kras=="G12V"
 tmp <- luad_mut[, mask]
@@ -86,62 +86,37 @@ gsetIdxs <- convertGsetToGIdxs(rownames(tmp), gsets)
 R <- test.mut.pathways(MUTtbl=tmp, gsets=gsetIdxs, classFactor=f)
 
 # run permutation test
-R.null <- replicate(100,test.mut.pathways(MUTtbl=tmp, gsets=gsetIdxs, classFactor=factor(factor)[sample(ncol(tmp))]))
-permuted.ptw <- sapply(names(R)[!is.na(R)],function(x){length(which(R.null[x,]<R[x]))/100})
+N <- 10000
+R.null <- mclapply(X=1:N,function(x){
+  test.mut.pathways(MUTtbl=tmp, gsets=gsetIdxs, classFactor=factor(factor)[sample(ncol(tmp))])
+ },mc.set.seed=TRUE,mc.cores=6)
+
+abc <- matrix(data=NA,nrow=length(names(gsetIdxs)),ncol=N)
+rownames(abc) <- names(gsetIdxs)
+colnames(abc) <- 1:N
+for (i in 1:N){abc[,i] <- R.null[[i]]}
+R.null <- abc
+rm(abc)
+
+permuted.ptw <- sapply(names(R)[!is.na(R)],function(x){length(which(R.null[x,]<R[x]))/N})
 
 # restrict on the patways of interest
-restricted.pwy <- names(which(permuted.ptw<=.01))
-
-R1 <- test.mut.pathways(MUTtbl=tmp, gsets=gsetIdxs[restricted.pwy], classFactor=f)
-identical(R[names(R1)],R1)
-
-# run new permutation test on the restricted pathways of interest
-R.null <- replicate(1000,test.mut.pathways(MUTtbl=tmp, gsets=gsetIdxs[restricted.pwy], classFactor=factor(factor)[sample(ncol(tmp))]))
-new.permuted.pwy <- sapply(names(R1),function(x){length(which(R.null[x,]<R[x]))/1000})
-new.restricted.pwy <- names(which(new.permuted.pwy<=.001))
+restricted.pwy <- names(which(permuted.ptw<=1/N))
+sort(permuted.ptw)[1:50]
 
 
-R2 <- test.mut.pathways(MUTtbl=tmp, gsets=gsetIdxs[new.restricted.pwy], classFactor=f)
-identical(R[names(R2)],R2)
+R[names(sort(permuted.ptw)[1:33])]
 
-# run new permutation test on the restricted pathways of interest
-R.null <- replicate(5000,test.mut.pathways(MUTtbl=tmp, gsets=gsetIdxs[new.restricted.pwy], classFactor=factor(factor)[sample(ncol(tmp))]))
-new.permuted.pwy1 <- sapply(names(R2),function(x){length(which(R.null[x,]<R[x]))/5000})
-new.restricted.pwy1 <- names(which(new.permuted.pwy1<.0002))
+names(sort(permuted.ptw)[1:33])
 
+sort(R)[1:30]
+foo <- cbind(names(R[names(which(R<1e-2))]),as.numeric(R[names(which(R<1e-2))]))
+colnames(foo) <- c("pathway","fisher exact test (p value)")
+write.table(x=foo,file="/home/cferte/FELLOW/cferte/KRAS_Analysis/pathways_G12V_G12C.txt",sep="\t",quote=FALSE,col.names=NA)
 
-R3 <- test.mut.pathways(MUTtbl=tmp, gsets=gsetIdxs[new.restricted.pwy1], classFactor=f)
-identical(R[names(R3)],R3)
-# run new permutation test on the restricted pathways of interest
-R.null <- replicate(10000,test.mut.pathways(MUTtbl=tmp, gsets=gsetIdxs[new.restricted.pwy1], classFactor=factor(factor)[sample(ncol(tmp))]))
-new.permuted.pwy2 <- sapply(names(R3),function(x){length(which(R.null[x,]<R[x]))/10000})
-new.restricted.pwy2 <- names(which(new.permuted.pwy2<.0001))
+R.final <- p.adjust(R,method="BH")
+sort(R.final)[1:30]
 
-R4 <- test.mut.pathways(MUTtbl=tmp, gsets=gsetIdxs[new.restricted.pwy2], classFactor=f)
-identical(R[names(R4)],R4)
-R.null <- replicate(50000,test.mut.pathways(MUTtbl=tmp, gsets=gsetIdxs[new.restricted.pwy2], classFactor=factor(factor)[sample(ncol(tmp))]))
-new.permuted.pwy3 <- sapply(names(R4),function(x){length(which(R.null[x,]<R[x]))/50000})
-new.restricted.pwy3 <- names(which(new.permuted.pwy3<.00001))
-
-# run new permutation test on the restricted pathways of interest (n=100 000)
-R5 <- test.mut.pathways(MUTtbl=tmp, gsets=gsetIdxs[new.restricted.pwy3], classFactor=f)
-identical(R[names(R5)],R5)
-R.null <- replicate(100000,test.mut.pathways(MUTtbl=tmp, gsets=gsetIdxs[new.restricted.pwy3], classFactor=factor(factor)[sample(ncol(tmp))]))
-new.permuted.pwy4 <- sapply(names(R5),function(x){length(which(R.null[x,]<R[x]))/100000})
-new.restricted.pwy4 <- names(which(new.permuted.pwy4<1e-05))
-new.permuted.pwy4[new.restricted.pwy4]
-
-# run new permutation test on the restricted pathways of interest (n=1000 000)
-new.restricted.pwy4 <- rat
-R6<- test.mut.pathways(MUTtbl=tmp, gsets=gsetIdxs[new.restricted.pwy4], classFactor=f)
-identical(R[names(R6)],R6)
-R.null <- replicate(1000000,test.mut.pathways(MUTtbl=tmp, gsets=gsetIdxs[new.restricted.pwy4], classFactor=factor(factor)[sample(ncol(tmp))]))
-new.permuted.pwy5 <- sapply(names(R6[which(!is.na(R6))]),function(x){length(which(R.null[x,]<R[x]))/1000000})
-new.restricted.pwy5 <- names(which(new.permuted.pwy5<1e-06))
-new.permuted.pwy5[new.restricted.pwy5]
-
-
-system.time(replicate(10,test.mut.pathways.original(MUTtbl=tmp, gsets=gsets, classFactor=factor(factor))))
 
 # explore the ERK pahway
 par(oma=c(8,2,2,2))
@@ -206,9 +181,9 @@ R[pwy]
 
 # explore the PIK3CA pahway
 par(oma=c(8,2,2,2))
-pwy <- "REACTOME_PI3K_AKT_ACTIVATION"
-pwy1 <- "BIOCARTA_MTOR_PATHWAY"
-pwy2 <- "BIOCARTA_MTOR_PATHWAY"
+pwy <- "BIOCARTA_HER2_PATHWAY "
+pwy1 <- "BIOCARTA_HER2_PATHWAY "
+pwy2 <- "BIOCARTA_HER2_PATHWAY "
 
 
 g12c.erk.muts <- rbind(rbind(tmp[gsetIdxs[[pwy]],f=="G12C"],tmp[gsetIdxs[[pwy1]],f=="G12C"]),tmp[gsetIdxs[[pwy2]],f=="G12C"])
@@ -280,6 +255,7 @@ R[pwy1]
 ####################################################################################################################
 ####################################################################################################################
 
+rat <- names(R[names(which(R<1e-2))])
 # explore all the significant pathways from rat
 for(i in 1:length(rat))
 
