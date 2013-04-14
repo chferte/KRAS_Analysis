@@ -40,6 +40,22 @@ limit.res <- .4
 cell.status <- sapply(1:length(cell.names),function(x){ifelse(all.prob[[x]][,1]>limit.sens,"sens",ifelse(all.prob[[x]][,1]<limit.res,"res","inter"))})
 names(cell.status) <- cell.names
 
+
+# try with the top 25 % percentile and lowest 25% percentile as sensitive and resistant, respectively
+for(i in 1:length(cell.names)){
+gold <- cell.status  
+foo <- apply(ccle_drug[cells[[i]],mek.inhib],1,mean)
+foo2 <- quantile(foo,probs=c(.25,.75))
+
+
+gold[[i]][names(which(foo>=foo2[2]))] <- "sens"
+gold[[i]][names(which(foo<=foo2[1]))] <- "res"
+gold[[i]][names(which(foo>foo2[1] & foo<foo2[2]))] <- "inter"
+}
+
+cell.status <- gold
+rm(gold,foo,foo2)
+
 #############################
 # plot the ActArea & the status
 #############################
@@ -94,12 +110,41 @@ print(paste("PPV=",format(PPV,digits=2)))
 
 title(main="Distribution of the yhats of the MEK inhibitors according to tissue type \n(sensitivity assessed by ActArea)",outer=TRUE)
 
+################################################################################################################
+# plot the yhats (x axis) and MEK ActArea (y axis)
+################################################################################################################
+par(mfrow=c(2,4))
+for(i in 1:length(cell.names)){
+  
+  y <- apply(ccle_drug[cells[[i]],mek.inhib],1,mean)
+  abc <- c()
+    abc <- as.data.frame(matrix(NA,nrow=length(cells[[i]]),ncol=N))
+    rownames(abc) <- cells[[i]]
+    colnames(abc) <- c(1:N)
+    for(l in c(1:N)){abc[rownames(yhats[[i]][[l]]),l] <- yhats[[i]][[l]]}
+    abc <- apply(abc,1,median,na.rm=TRUE)
+  x <- abc
+  rm(abc)
+plot(x,y,pch=20,main=paste(cell.names[[i]]),
+     xlab="yhats",ylab="ActArea",ylim=c(0,8))
+abline(h=quantile(y,probs=c(.25,.75)),col="red",lw=2,lty=2)
+g <- loess(formula=y~x)
+lines(lwd=3,g$x[sort(g$x,index.return=TRUE)$ix],
+      g$fitted[sort(g$x,index.return=TRUE)$ix],col="royalblue1")
+print(cell.names[[i]])
+  print(cor.test(x,y,method="spearman")$p.value)
+  print(cor.test(x,y,method="spearman")$estimate)
+}
+
+title(main="Distribution of the sensitivity to the MEK inhibitors according their preedictied value (yhats) \n(sensitivity assessed by ActArea)",outer=TRUE)
+
+
 
 #################################################################################################################
 # plot the distribution of yhats of MEK ActArea (ie: plot the y)
 ################################################################################################################
 
-par(mfrow=c(2,5),oma=c(0,0,0,0))
+par(mfrow=c(4,5),oma=c(0,0,0,0))
 #cells <- list(mek.cells,nsclc.mek.cells,breast.mek.cells,crc.mek.cells,hemal.mek.cells,glioma.mek.cells,melanoma.mek.cells)
 #cell.names <- list("ALL CELLS","NSCLC","BREAST","CRC","Hematologic\nMalignancies","GLIOMA","MELANOMA")
 #yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.glioma,yhat.melanoma)
@@ -142,15 +187,15 @@ for(j in c(1:length(cells)))
   title.name <- paste(cell.names[[j]],"n=",length(cells[[j]]))
   boxplot(cor,main=paste(title.name,"\nCorrelation"),outline=FALSE,ylab="spearman rho",ylim=c(-0.4,1))
   abline(h=c(-.4,-.2,0,.2,.4,.6,.8,1),lty=2,cex=.8,col="gray60")
-  stripchart(cor,col="orange",add=TRUE,vertical=TRUE,method="jitter",pch=19)
+  stripchart(cor,col="coral",add=TRUE,vertical=TRUE,method="jitter",pch=19)
   print(paste("correlation", cell.names[[j]],format(median(cor,na.rm=TRUE),digits=2)))
   
-  plot(perf, lwd=3,main=paste(title.name,"\nAUC"),col="orange",xlab="False positive rate (1-Specificity)",ylab="True positive rate (sensitivity)")
+  plot(perf, lwd=3,main=paste(title.name,"\nAUC"),col="coral",xlab="False positive rate (1-Specificity)",ylab="True positive rate (sensitivity)")
   text(x=.6,y=.2,labels=paste("AUC=",auc),cex=.8,font=2)
   abline(b=1,a=0,lty=2,cex=.8,col="gray60")
   print(paste("AUC=", cell.names[[j]],auc))
 
-  plot(threshold,Accuracy,main=paste(title.name,"\nAccuracy"),ylim=c(0,1),type="l",lwd=3, col="orange",cex.axis=.9)  
+  plot(threshold,Accuracy,main=paste(title.name,"\nAccuracy"),ylim=c(0,1),type="l",lwd=3, col="coral",cex.axis=.9)  
   abline(v=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")  
   abline(h=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")
   
