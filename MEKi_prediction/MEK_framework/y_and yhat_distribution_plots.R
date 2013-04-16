@@ -26,6 +26,10 @@ cell.names <- list("ALL CELLS","NSCLC","BREAST","CRC","Hematologic\nMalignancies
 load("/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/global_model_yhats.Rda")
 yhats <- global_model_yhats
 
+
+#load("/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/lkb1_model_yhats.Rda")
+#yhats <- lkb1_model_yhats
+
 #yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.glioma,yhat.melanoma)
 #yhats <- pure_tissue_models_yhats
 
@@ -35,26 +39,38 @@ yhats <- global_model_yhats
 #yhats <- balanced_model_yhats
 
 # cell status: sensitive are the ones >.6, res are <.4, inter are the rest !
-limit.sens <- .6
-limit.res <- .4
-cell.status <- sapply(1:length(cell.names),function(x){ifelse(all.prob[[x]][,1]>limit.sens,"sens",ifelse(all.prob[[x]][,1]<limit.res,"res","inter"))})
+cell.status <- c()
+limit.sens <- .55
+limit.res <- .35
+for(i in 1:length(cell.names)){
+foo <- names(which(all.prob[[i]][,1]>=limit.sens))
+min.sens.act.area <- min(apply(ccle_drug[foo,mek.inhib],1,mean))
+foo <- names(which(all.prob[[i]][,1]<=limit.res))
+max.res.act.area <- max(apply(ccle_drug[foo,mek.inhib],1,mean))
+cell.status <- c(cell.status,
+                 list(ifelse(apply(ccle_drug[cells[[i]],mek.inhib],1,mean) >= min.sens.act.area,"sens",
+                             ifelse(apply(ccle_drug[cells[[i]],mek.inhib],1,mean) <= max.res.act.area,
+                                    "res","inter"))))
+}
 names(cell.status) <- cell.names
 
+# # try with the top 25 % percentile and lowest 25% percentile as sensitive and resistant, respectively
+# gold <- cell.status
+# for(i in 1:length(cell.names)){
+# 
+# foo <- apply(ccle_drug[cells[[i]],mek.inhib],1,mean)
+# foo2 <- quantile(foo,probs=c(.25,.75))
+# gold[[i]][names(which(foo>=foo2[2]))] <- "sens"
+# gold[[i]][names(which(foo<=foo2[1]))] <- "res"
+# gold[[i]][names(which(foo>foo2[1] & foo<foo2[2]))] <- "inter"
+# 
+# print(cell.names[[i]])
+# print(table(gold[[i]]))
+# }
+# 
+# cell.status <- gold
+# rm(foo,foo2,gold)
 
-# try with the top 25 % percentile and lowest 25% percentile as sensitive and resistant, respectively
-for(i in 1:length(cell.names)){
-gold <- cell.status  
-foo <- apply(ccle_drug[cells[[i]],mek.inhib],1,mean)
-foo2 <- quantile(foo,probs=c(.25,.75))
-
-
-gold[[i]][names(which(foo>=foo2[2]))] <- "sens"
-gold[[i]][names(which(foo<=foo2[1]))] <- "res"
-gold[[i]][names(which(foo>foo2[1] & foo<foo2[2]))] <- "inter"
-}
-
-cell.status <- gold
-rm(gold,foo,foo2)
 
 #############################
 # plot the ActArea & the status
@@ -62,12 +78,16 @@ rm(gold,foo,foo2)
 par(mfrow=c(2,4),oma=c(0,0,4,0))
 for(i in 1:length(all.prob))
 {
+  print(cell.names[[i]])
+  print(table(cell.status[[i]]))
   #col.vec <- (apply(all.prob[[i]],1,function(x){names(which(x==max(x)))}))
   #col.vec <- ifelse(col.vec=="sens",1,2)
-  col.vec <- factor(-1*(all.prob[[i]][,1]+1))
+  #col.vec <- factor(-1*(all.prob[[i]][,1]+1))
+  col.vec <- ifelse(cell.status[[i]]=="sens","green",ifelse(cell.status[[i]]=="res","red","grey60"))
   plot(density(apply(ccle_drug[cells[[i]],mek.inhib],1,mean)),lwd=3,main=paste(cell.names[[i]]),xlim=c(-1.5,8),ylim=c(0,1))
   ypos <- abs(rnorm(sd=.04,mean=.8,n=length(rownames(all.prob[[i]]))))
-  points(apply(ccle_drug[rownames(all.prob[[i]]),mek.inhib],1,mean),ypos,col=greenred(length(col.vec))[col.vec],pch=20,cex=1.1)
+  points(apply(ccle_drug[cells[[i]],mek.inhib],1,mean),ypos,col=col.vec,pch=20,cex=1.1)
+  #points(apply(ccle_drug[rownames(all.prob[[i]]),mek.inhib],1,mean),ypos,col=greenred(length(col.vec))[col.vec],pch=20,cex=1.1)
 }
 
 title(main="Distribution of the sensitivity of cell lines to MEK inhibitors according to tissue type \n(sensitivity assessed by ActArea, red & green colors stand for resistant & sensitive cells)",
@@ -127,13 +147,17 @@ for(i in 1:length(cell.names)){
   rm(abc)
 plot(x,y,pch=20,main=paste(cell.names[[i]]),
      xlab="yhats",ylab="ActArea",ylim=c(0,8))
-abline(h=quantile(y,probs=c(.25,.75)),col="red",lw=2,lty=2)
+abline(col="red",lw=2,lty=2,h=c(min(y[names(which(cell.status[[i]]=="sens"))]),max(y[names(which(cell.status[[i]]=="res"))])))
+  
+#abline(h=quantile(y,probs=c(.25,.75)),col="red",lw=2,lty=2)
 g <- loess(formula=y~x)
 lines(lwd=3,g$x[sort(g$x,index.return=TRUE)$ix],
       g$fitted[sort(g$x,index.return=TRUE)$ix],col="royalblue1")
 print(cell.names[[i]])
   print(cor.test(x,y,method="spearman")$p.value)
   print(cor.test(x,y,method="spearman")$estimate)
+  abline(v=quantile(x,probs=c(.2,.8),na.rm=TRUE),col="green",lwd=3)
+  
 }
 
 title(main="Distribution of the sensitivity to the MEK inhibitors according their preedictied value (yhats) \n(sensitivity assessed by ActArea)",outer=TRUE)
@@ -214,15 +238,14 @@ for(j in c(1:length(cells)))
 ################################################################################################################
 par(oma=c(0,0,6,0))
 # first plot the density of the IC50
-k <- list(mek.cells,nsclc.mek.cells,breast.mek.cells,crc.mek.cells,hemal.mek.cells,glioma.mek.cells,melanoma.mek.cells)
-yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.glioma,yhat.melanoma)
-names(k) <- c("ALL CELLS","NSCLC","BREAST","COLORECTAL","Hematologic\nMalignancies","GLIOMA","MELANOMA")
+k <- cells
+names(k) <- cell.names
 par(mfrow=c(2,4))
 for(i in c(1:length(k)))
 {
  
   tissue.ic50 <- apply(ccle_drug[k[[i]],mek.inhib],1,mean)
-  plot(density(tissue.ic50),main=paste(names(k)[i]),ylim=c(0,3.5),xlim=c(-2,8.5),lwd=1) 
+  plot(density(tissue.ic50),main=paste(names(k)[i]),ylim=c(0,3.5),xlim=c(-2,8.5),lwd=1,ylab="density of the ActArea") 
   
   #  create a matrix abc containing all the yhat per cells
   abc <- matrix(NA,ncol=N,nrow=length(k[[i]]))
@@ -241,10 +264,10 @@ for(i in c(1:length(k)))
   # plot the variance of the predictions accodring to their actual IC50
   # to show that the prediction performance is dependant on the distribution of the model features in our model
   tmp <- names(sort(apply(ccle_drug[k[[i]],mek.inhib],1,mean)))
-  lines(tissue.ic50[tmp],RMSE[tmp],col="coral1",type="p",pch=20,cex=.7)
-  axis(4, ylim=c(0,max(RMSE[tmp])+1),,col="red",col.axis="red")
+  lines(tissue.ic50[tmp],RMSE[tmp],col="red",type="p",pch=19,cex=.7)
+  axis(4, ylim=c(0,max(RMSE[tmp])+1),,col="coral",col.axis="red",ylab="RMSE")
   q <- loess(RMSE[tmp]~tissue.ic50[tmp])
-  lines(q$x,q$fitted,col="red",lwd=3)
+  lines(q$x,q$fitted,col="royalblue",lwd=3)
   #lines(density(tissue.ic50),main=paste(names(k)[i]),ylim=c(0,3.5),xlim=c(-2,8.5),lwd=2)
  lines(density(tissue.ic50),main=paste(names(k)[i]),lwd=3)
 }

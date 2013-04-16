@@ -90,7 +90,7 @@ rm(tmp)
 # rm(tmp)
 
 #########################################################################################################
-## Make the data coherent between all the datasets
+## Make the samples coherent between all the datasets
 #########################################################################################################
 tmp <- intersect(colnames(ccle_cnv),colnames(ccle_exp))
 tmp <- intersect(colnames(ccle_mut),tmp)
@@ -127,7 +127,7 @@ nsclc.mek.cells <- intersect(nsclc.mek.cells,ccle_info$CCLE.name[ ccle_info$Hist
 crc.mek.cells <- carcinoma.mek.cells[grep(pattern="LARGE_INTESTINE",x=carcinoma.mek.cells)]
 breast.mek.cells <- carcinoma.mek.cells[grep(pattern="BREAST",x=carcinoma.mek.cells)]
 melanoma.mek.cells <-  intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology =="malignant_melanoma"])
-glioma.mek.cells <-  intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology =="glioma"])
+#glioma.mek.cells <-  intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology =="glioma"])
 hemal.mek.cells <- intersect(mek.cells,ccle_info$CCLE.name[ccle_info$Histology %in% c("haematopoietic_neoplasm","lymphoid_neoplasm")])
 lung.adk.mek.cells <-  intersect(nsclc.mek.cells,ccle_info$CCLE.name[ ccle_info$Hist.Subtype1 =="adenocarcinoma"])
 pancreas.mek.cells <- carcinoma.mek.cells[grep(pattern="PANCREAS",x=carcinoma.mek.cells)]

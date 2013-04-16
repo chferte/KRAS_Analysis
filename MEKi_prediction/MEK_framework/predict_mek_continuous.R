@@ -30,6 +30,14 @@ cell.status <- ccle_probs_status[[2]]
 global.matrix <- ccle_exp
 rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""))
 
+# define globalmatrix (gene expression + mutations)
+global.matrix <- rbind(ccle_exp,ccle_mut[c("STK11","TP53","KRAS"),])
+rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""),paste(rownames(ccle_mut[c("STK11","TP53","KRAS"),]),"_mut",sep=""))
+
+# create a vector for penalty
+pen.vec <- rep(x=1,times=nrow(global.matrix))
+pen.vec[which(rownames(global.matrix) %in% c("STK11_mut","TP53_mut","KRAS_mut"))] <- 0
+names(pen.vec) <- rownames(global.matrix)
 
 
 # # define globalmatrix (with tissue specificity)
@@ -120,16 +128,16 @@ PARAL <- mclapply(X=1:N,FUN=function(x){
   vec.train <-apply(ccle_drug[train,mek.inhib],1,mean)
   
   # standard training
-  cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1)
-  fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se)
+  #cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1)
+  #fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se)
   
   # weighted models
   #cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1,weights=prob.weights[train])
   #fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se,weights=prob.weights[train])
   
   # penalty factor
-  #cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1,penalty.factor=pen.vec)
-  #fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se,penalty.factor=pen.vec)
+  cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1,penalty.factor=pen.vec)
+  fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se,penalty.factor=pen.vec)
   
   return(list(fit,train)) },mc.set.seed=TRUE,mc.cores=6)
   
@@ -168,8 +176,12 @@ for(i in c(1:N)){
 # save the objects
 #####################################################################################################################
 
-global_model_yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.melanoma,yhat.pancreas,yhat.ovary)
-save(global_model_yhats,file="/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/global_model_yhats.Rda")
+#global_model_yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.melanoma,yhat.pancreas,yhat.ovary)
+#save(global_model_yhats,file="/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/global_model_yhats.Rda")
+
+lkb1_model_yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.melanoma,yhat.pancreas,yhat.ovary)
+save(lkb1_model_yhats,file="/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/lkb1_model_yhats.Rda")
+
 
 # # save it in pure_tissue_models_yhats
 # pure_tissue_models_yhats <- c(pure_tissue_models_yhats,list(yhat.melanoma))
