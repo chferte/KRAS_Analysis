@@ -23,12 +23,12 @@ cell.status <- ccle_probs_status[[2]]
 cells <- list(mek.cells,nsclc.mek.cells,breast.mek.cells,crc.mek.cells,hemal.mek.cells,melanoma.mek.cells,pancreas.mek.cells,ovary.mek.cells)
 cell.names <- list("ALL CELLS","NSCLC","BREAST","CRC","Hematologic\nMalignancies","MELANOMA","PANCREAS","OVARY")
 
-load("/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/global_model_yhats.Rda")
-yhats <- global_model_yhats
+#load("/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/global_model_yhats.Rda")
+#yhats <- global_model_yhats
 
 
-#load("/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/lkb1_model_yhats.Rda")
-#yhats <- lkb1_model_yhats
+load("/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/lkb1_model_yhats.Rda")
+yhats <- lkb1_model_yhats
 
 #yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.glioma,yhat.melanoma)
 #yhats <- pure_tissue_models_yhats
@@ -133,7 +133,7 @@ title(main="Distribution of the yhats of the MEK inhibitors according to tissue 
 ################################################################################################################
 # plot the yhats (x axis) and MEK ActArea (y axis)
 ################################################################################################################
-par(mfrow=c(2,3))
+par(mfrow=c(2,4))
 for(i in 1:length(cell.names)){
   
   y <- apply(ccle_drug[cells[[i]],mek.inhib],1,mean)
