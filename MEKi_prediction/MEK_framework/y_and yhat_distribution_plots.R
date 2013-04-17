@@ -38,9 +38,9 @@ yhats <- global_model_yhats
 #load("/home/cferte/RESULTS/MEKi/balanced_model_yhats.Rda")
 #yhats <- balanced_model_yhats
 
-# cell status: sensitive are the ones >.6, res are <.4, inter are the rest !
+# cell status: sensitive are the ones >.5, res are <.35, inter are the rest !
 cell.status <- c()
-limit.sens <- .55
+limit.sens <- .5
 limit.res <- .35
 for(i in 1:length(cell.names)){
 foo <- names(which(all.prob[[i]][,1]>=limit.sens))
@@ -133,7 +133,7 @@ title(main="Distribution of the yhats of the MEK inhibitors according to tissue 
 ################################################################################################################
 # plot the yhats (x axis) and MEK ActArea (y axis)
 ################################################################################################################
-par(mfrow=c(2,4))
+par(mfrow=c(2,3))
 for(i in 1:length(cell.names)){
   
   y <- apply(ccle_drug[cells[[i]],mek.inhib],1,mean)
@@ -145,30 +145,24 @@ for(i in 1:length(cell.names)){
     abc <- apply(abc,1,median,na.rm=TRUE)
   x <- abc
   rm(abc)
-plot(x,y,pch=20,main=paste(cell.names[[i]]),
-     xlab="yhats",ylab="ActArea",ylim=c(0,8))
-abline(col="red",lw=2,lty=2,h=c(min(y[names(which(cell.status[[i]]=="sens"))]),max(y[names(which(cell.status[[i]]=="res"))])))
+plot(x,y,pch=20,main=paste(cell.names[[i]]),cex=1.5,
+     xlab="Predicted sensitivity (yhats)",ylab="observed sensitivity (Activity Area)",ylim=c(0,8))
   
-#abline(h=quantile(y,probs=c(.25,.75)),col="red",lw=2,lty=2)
+  pval <- format(cor.test(x,y,method="spearman")$p.value,digits=3)
+  rho <- format(cor.test(x,y,method="spearman")$estimate,digits=2)
+  text(paste("p value =", pval),x=par()$usr[1]+.3,y=7, cex=.9,adj=0,font=2)
+  text(paste("Spearman rho =", rho),x=par()$usr[1]+.3,y=7.5, cex=.9,adj=0,font=2)
+  abline(col="red",lw=2,lty=2,h=c(min(y[names(which(cell.status[[i]]=="sens"))]),max(y[names(which(cell.status[[i]]=="res"))])))
+  
 g <- loess(formula=y~x)
-lines(lwd=3,g$x[sort(g$x,index.return=TRUE)$ix],
+lines(lwd=4,lty=2,g$x[sort(g$x,index.return=TRUE)$ix],
       g$fitted[sort(g$x,index.return=TRUE)$ix],col="royalblue1")
-print(cell.names[[i]])
-  print(cor.test(x,y,method="spearman")$p.value)
-  print(cor.test(x,y,method="spearman")$estimate)
-  abline(v=quantile(x,probs=c(.2,.8),na.rm=TRUE),col="green",lwd=3)
-  
 }
-
-title(main="Distribution of the sensitivity to the MEK inhibitors according their preedictied value (yhats) \n(sensitivity assessed by ActArea)",outer=TRUE)
-
-
 
 #################################################################################################################
 # plot the distribution of yhats of MEK ActArea (ie: plot the y)
 ################################################################################################################
-
-par(mfrow=c(4,5),oma=c(0,0,0,0))
+par(mfrow=c(4,4),oma=c(0,0,0,0))
 #cells <- list(mek.cells,nsclc.mek.cells,breast.mek.cells,crc.mek.cells,hemal.mek.cells,glioma.mek.cells,melanoma.mek.cells)
 #cell.names <- list("ALL CELLS","NSCLC","BREAST","CRC","Hematologic\nMalignancies","GLIOMA","MELANOMA")
 #yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.glioma,yhat.melanoma)
@@ -180,45 +174,46 @@ for(j in c(1:length(cells)))
   Accuracy <- c()
   threshold <- seq(from=0,to=1,by=.01)
   for(k in threshold){
-  
-  #assemble the yhats in a median vector abc  
+    
+    #assemble the yhats in a median vector abc  
     abc <- matrix(NA,nrow=length(cells[[j]]),ncol=N)
-  rownames(abc) <- cells[[j]]
-  colnames(abc) <- c(1:N)
-  for(i in c(1:N)){abc[rownames(yhats[[j]][[i]]),i] <- yhats[[j]][[i]]}
-   predicted.sensitivity <- apply(abc,1,median,na.rm=TRUE)
-  top.predicted.cells <- ifelse(predicted.sensitivity>=quantile(predicted.sensitivity,probs=k),1,0)
-  bottom.predicted.cells <- ifelse(predicted.sensitivity<=quantile(predicted.sensitivity,probs=k),1,0)
+    rownames(abc) <- cells[[j]]
+    colnames(abc) <- c(1:N)
+    for(i in c(1:N)){abc[rownames(yhats[[j]][[i]]),i] <- yhats[[j]][[i]]}
+    predicted.sensitivity <- apply(abc,1,median,na.rm=TRUE)
+    top.predicted.cells <- ifelse(predicted.sensitivity>=quantile(predicted.sensitivity,probs=k),1,0)
+    bottom.predicted.cells <- ifelse(predicted.sensitivity<=quantile(predicted.sensitivity,probs=k),1,0)
     #def <- apply(ccle_drug[cells[[j]],mek.inhib],1,mean)
-  #top.true.cells <- ifelse(def>=quantile(def,probs=k),1,0)
-   top.true.cells <- ifelse(cell.status[[j]]=="sens",1,0)
+    #top.true.cells <- ifelse(def>=quantile(def,probs=k),1,0)
+    top.true.cells <- ifelse(cell.status[[j]]=="sens",1,0)
     bottom.true.cells <- ifelse(cell.status[[j]]=="res",1,0)
     tmp <- rownames(abc)
     top.predicted.cells <- top.predicted.cells[tmp]
     top.true.cells <- top.true.cells[tmp]
     bottom.predicted.cells <- bottom.predicted.cells[tmp]
     bottom.true.cells <- bottom.true.cells[tmp]
-   PPV <- c(PPV,length(which(top.predicted.cells==1 & top.true.cells==1))/length(which(top.predicted.cells==1)))
-  NPV <- c(NPV,length(which(bottom.predicted.cells==1 & bottom.true.cells==1))/length(which(bottom.predicted.cells==1)))
-  Accuracy <- c(Accuracy,(length(which(top.predicted.cells==1 & top.true.cells==1)) + length(which(top.predicted.cells==0 & top.true.cells==0)))/length(top.predicted.cells))
-   pred <- prediction(predicted.sensitivity, top.true.cells)
-   perf <- performance(pred, measure = "tpr", x.measure = "fpr")
-  auc <- performance(pred,"auc")
+    PPV <- c(PPV,length(which(top.predicted.cells==1 & top.true.cells==1))/length(which(top.predicted.cells==1)))
+    NPV <- c(NPV,length(which(bottom.predicted.cells==1 & bottom.true.cells==1))/length(which(bottom.predicted.cells==1)))
+    Accuracy <- c(Accuracy,(length(which(top.predicted.cells==1 & top.true.cells==1)) + length(which(top.predicted.cells==0 & top.true.cells==0)))/length(top.predicted.cells))
+    pred <- prediction(predicted.sensitivity, top.true.cells)
+    perf <- performance(pred, measure = "tpr", x.measure = "fpr")
+    auc <- performance(pred,"auc")
     auc <- format(unlist(slot(auc, "y.values")),digits=2)
-  cor <- cor(abc,all.prob[[j]][rownames(abc),1],method="spearman",use="pairwise.complete.obs")
-  
+    cor <- cor(abc,all.prob[[j]][rownames(abc),1],method="spearman",use="pairwise.complete.obs")
+    
   }
   title.name <- paste(cell.names[[j]],"n=",length(cells[[j]]))
-  boxplot(cor,main=paste(title.name,"\nCorrelation"),outline=FALSE,ylab="spearman rho",ylim=c(-0.4,1))
-  abline(h=c(-.4,-.2,0,.2,.4,.6,.8,1),lty=2,cex=.8,col="gray60")
-  stripchart(cor,col="coral",add=TRUE,vertical=TRUE,method="jitter",pch=19)
-  print(paste("correlation", cell.names[[j]],format(median(cor,na.rm=TRUE),digits=2)))
+  
+  #boxplot(cor,main=paste(title.name,"\nCorrelation"),outline=FALSE,ylab="spearman rho",ylim=c(-0.4,1))
+  #abline(h=c(-.4,-.2,0,.2,.4,.6,.8,1),lty=2,cex=.8,col="gray60")
+  #stripchart(cor,col="coral",add=TRUE,vertical=TRUE,method="jitter",pch=19)
+  #print(paste("correlation", cell.names[[j]],format(median(cor,na.rm=TRUE),digits=2)))
   
   plot(perf, lwd=3,main=paste(title.name,"\nAUC"),col="coral",xlab="False positive rate (1-Specificity)",ylab="True positive rate (sensitivity)")
   text(x=.6,y=.2,labels=paste("AUC=",auc),cex=.8,font=2)
   abline(b=1,a=0,lty=2,cex=.8,col="gray60")
   print(paste("AUC=", cell.names[[j]],auc))
-
+  
   plot(threshold,Accuracy,main=paste(title.name,"\nAccuracy"),ylim=c(0,1),type="l",lwd=3, col="coral",cex.axis=.9)  
   abline(v=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")  
   abline(h=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")
@@ -226,17 +221,18 @@ for(j in c(1:length(cells)))
   plot(threshold,NPV,main=paste(title.name,"\nNegative Predicted value"),ylim=c(0,1),col="red",type="l",lwd=3, cex.axis=.9,xlim=c(0,1))
   abline(v=c(0,.2,.4,.6,.8,1),lty=2,cex=.8,col="gray60")  
   abline(h=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")
-
+  
   plot(threshold,PPV,main=paste(title.name,"\nPositive Predicted Value"),col="green",ylim=c(0,1),type="l",lwd=3, cex.axis=.9,xlim=c(0,1))
   abline(v=c(0,.2,.4,.6,.8,1),lty=2,cex=.8,col="gray60")  
   abline(h=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")
 }
 
 
+
 ################################################################################################################
 # plot the RMSE for the prediction of each cell lines
 ################################################################################################################
-par(oma=c(0,0,6,0))
+par(oma=c(0,0,0,0))
 # first plot the density of the IC50
 k <- cells
 names(k) <- cell.names
@@ -245,7 +241,7 @@ for(i in c(1:length(k)))
 {
  
   tissue.ic50 <- apply(ccle_drug[k[[i]],mek.inhib],1,mean)
-  plot(density(tissue.ic50),main=paste(names(k)[i]),ylim=c(0,3.5),xlim=c(-2,8.5),lwd=1,ylab="density of the ActArea") 
+  plot(density(tissue.ic50),main=paste(names(k)[i]),ylim=c(0,4),xlim=c(-2,8.5),lwd=1,xlab="sensitivity to MEKi (ActArea)") 
   
   #  create a matrix abc containing all the yhat per cells
   abc <- matrix(NA,ncol=N,nrow=length(k[[i]]))
@@ -264,14 +260,14 @@ for(i in c(1:length(k)))
   # plot the variance of the predictions accodring to their actual IC50
   # to show that the prediction performance is dependant on the distribution of the model features in our model
   tmp <- names(sort(apply(ccle_drug[k[[i]],mek.inhib],1,mean)))
-  lines(tissue.ic50[tmp],RMSE[tmp],col="red",type="p",pch=19,cex=.7)
-  axis(4, ylim=c(0,max(RMSE[tmp])+1),,col="coral",col.axis="red",ylab="RMSE")
+  lines(tissue.ic50[tmp],RMSE[tmp],col="red",type="p",pch=19,cex=1)
+  #axis(4, ylim=c(0,max(RMSE[tmp])+1),,col="coral",col.axis="red",ylab="RMSE")
   q <- loess(RMSE[tmp]~tissue.ic50[tmp])
-  lines(q$x,q$fitted,col="royalblue",lwd=3)
+  lines(q$x,q$fitted,col="royalblue",lwd=3,lty=2)
   #lines(density(tissue.ic50),main=paste(names(k)[i]),ylim=c(0,3.5),xlim=c(-2,8.5),lwd=2)
  lines(density(tissue.ic50),main=paste(names(k)[i]),lwd=3)
 }
 
-title(main="Distribution of the sensitivity of cell lines to MEK inhibitors according to tissue type \n(sensitivity assessed by ActArea)",,outer=TRUE)
+#title(main="Distribution of the sensitivity of cell lines to MEK inhibitors according to tissue type \n(sensitivity assessed by ActArea)",,outer=TRUE)
 
 
