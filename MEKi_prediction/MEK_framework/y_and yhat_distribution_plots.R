@@ -14,21 +14,26 @@ all.prob <- ccle_probs_status[[1]]
 cell.status <- ccle_probs_status[[2]]
 
 
-
-ccle_probs_status <- loadEntity("syn1709732")
-ccle_probs_status <- ccle_probs_status$objects$ccle_probs_status
-all.prob <- ccle_probs_status[[1]]
-cell.status <- ccle_probs_status[[2]]
-
 cells <- list(mek.cells,nsclc.mek.cells,breast.mek.cells,crc.mek.cells,hemal.mek.cells,melanoma.mek.cells,pancreas.mek.cells,ovary.mek.cells)
 cell.names <- list("ALL CELLS","NSCLC","BREAST","CRC","Hematologic\nMalignancies","MELANOMA","PANCREAS","OVARY")
 
 #load("/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/global_model_yhats.Rda")
 #yhats <- global_model_yhats
 
+#load("/home/cferte/RESULTS/MEKi/TISSUE_SPECIFIC_MODELS/ROBJECTS/pure_tissue.models.Rda")
+#yhats <- pure_tissue_models_yhats
 
-load("/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/lkb1_model_yhats.Rda")
-yhats <- lkb1_model_yhats
+load("/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/stk11_kras_tp53_genexp_yhats.Rda")
+yhats <- stk11_kras_tp53_genexp_yhats
+
+#load("/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/lkb1_model_yhats.Rda")
+#yhats <- lkb1_model_yhats
+
+#load("/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/lkb1_mutations_model_yhats.Rda")
+#yhats <- lkb1_mutations_model_yhats
+
+#load("/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/ovarian_mutations_model_yhats.Rda")
+#yhats <- ovarian_mutations_model_yhats
 
 #yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.glioma,yhat.melanoma)
 #yhats <- pure_tissue_models_yhats
@@ -157,6 +162,11 @@ plot(x,y,pch=20,main=paste(cell.names[[i]]),cex=1.5,
 g <- loess(formula=y~x)
 lines(lwd=4,lty=2,g$x[sort(g$x,index.return=TRUE)$ix],
       g$fitted[sort(g$x,index.return=TRUE)$ix],col="royalblue1")
+
+  print(paste(cell.names[[i]]))
+  print(paste("spearman rho",rho))
+  print(paste("p val",pval))
+
 }
 
 #################################################################################################################
@@ -226,8 +236,6 @@ for(j in c(1:length(cells)))
   abline(v=c(0,.2,.4,.6,.8,1),lty=2,cex=.8,col="gray60")  
   abline(h=c(.2,.4,.6,.8),lty=2,cex=.8,col="gray60")
 }
-
-
 
 ################################################################################################################
 # plot the RMSE for the prediction of each cell lines
