@@ -23,11 +23,11 @@ cell.names <- list("ALL CELLS","NSCLC","BREAST","CRC","Hematologic\nMalignancies
 #load("/home/cferte/RESULTS/MEKi/TISSUE_SPECIFIC_MODELS/ROBJECTS/pure_tissue.models.Rda")
 #yhats <- pure_tissue_models_yhats
 
-load("/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/stk11_kras_tp53_genexp_yhats.Rda")
-yhats <- stk11_kras_tp53_genexp_yhats
+#load("/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/stk11_kras_tp53_yhats.Rda")
+#yhats <- stk11_kras_tp53_yhats
 
-#load("/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/lkb1_model_yhats.Rda")
-#yhats <- lkb1_model_yhats
+load("/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/stk11_kras_tp53_mutations_yhats.Rda")
+yhats <- stk11_kras_tp53_mutations_yhats
 
 #load("/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/lkb1_mutations_model_yhats.Rda")
 #yhats <- lkb1_mutations_model_yhats
