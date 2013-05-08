@@ -9,12 +9,27 @@
 # load the mek data from ccle
 source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_mek_ccle.R")
 
-# load the  cell statsu and probabilities
+# load the  cell status and probabilities
 ccle_probs_status <- loadEntity("syn1709732")
 ccle_probs_status <- ccle_probs_status$objects$ccle_probs_status
 all.prob <- ccle_probs_status[[1]]
 cell.status <- ccle_probs_status[[2]]
 
+#######################################################
+# load the validation data and make it coherent with the training data 
+#######################################################
+foo  <-  loadEntity("syn418003")
+val_exp <- read.table(list.files(foo$cacheDir,full.names=TRUE),row.names=1,comment="",quote="",sep="\t",header=TRUE)
+tmp <- sapply(strsplit(x=rownames(val_exp),split="|",fixed=TRUE),function(x){x[[1]]})
+tmp1 <- unique(c(which(tmp=="?"), which(duplicated(tmp)==TRUE)))
+val_exp <- val_exp[-tmp1,]
+rownames(val_exp) <- tmp[-tmp1]
+rm(tmp,tmp1)
+
+tmp <- intersect(rownames(val_exp),rownames(ccle_exp))
+val_exp <- val_exp[tmp,]
+ccle_exp <- ccle_exp[tmp,]
+rm(tmp)
 
 #######################################################
 # predictive modeling
@@ -27,26 +42,26 @@ cell.status <- ccle_probs_status[[2]]
 #rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""),paste(rownames(ccle_cnv),"_cnv",sep=""),paste(rownames(ccle_mut),"_mut",sep=""))
 
 # define globalmatrix (gene expression only)
-#global.matrix <- ccle_exp
-#rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""))
+global.matrix <- ccle_exp
+rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""))
 
 # define globalmatrix (gene expression + mutations)
 #global.matrix <- rbind(ccle_exp,ccle_mut[c("STK11","TP53","KRAS"),])
 #rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""),paste(rownames(ccle_mut[c("STK11","TP53","KRAS"),]),"_mut",sep=""))
 
 # define globalmatrix (mutations only)
-global.matrix <- ccle_mut
-rownames(global.matrix) <- paste(rownames(ccle_mut),"_mut",sep="")
+#global.matrix <- ccle_mut
+#rownames(global.matrix) <- paste(rownames(ccle_mut),"_mut",sep="")
 
 # define globalmatrix (the "3" lung mutations)
 #global.matrix <- ccle_mut[c("STK11","TP53","KRAS"),]
 #rownames(global.matrix) <- paste(rownames(ccle_mut[c("STK11","TP53","KRAS"),]),"_mut",sep="")
 
 # create a vector for penalty
-pen.vec <- rep(x=1,times=nrow(global.matrix))
-pen.vec[which(rownames(global.matrix) %in% c("STK11_mut","TP53_mut","KRAS_mut"))] <- 0
+#pen.vec <- rep(x=1,times=nrow(global.matrix))
+#pen.vec[which(rownames(global.matrix) %in% c("STK11_mut","TP53_mut","KRAS_mut"))] <- 0
 #pen.vec[which(rownames(global.matrix) %in% c("BRAF_mut","PTEN_mut","CTNNB1_mut","PIK3CA_mut","TP53_mut","KRAS_mut"))] <- 0
-names(pen.vec) <- rownames(global.matrix)
+#names(pen.vec) <- rownames(global.matrix)
 
 
 
@@ -138,16 +153,16 @@ PARAL <- mclapply(X=1:N,FUN=function(x){
   vec.train <-apply(ccle_drug[train,mek.inhib],1,mean)
   
   # standard training
-  #cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1)
-  #fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se)
+  cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1)
+  fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se)
   
   # weighted models
   #cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1,weights=prob.weights[train])
   #fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se,weights=prob.weights[train])
   
   # penalty factor
-  cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1,penalty.factor=pen.vec)
-  fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se,penalty.factor=pen.vec)
+  #cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1,penalty.factor=pen.vec)
+  #fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se,penalty.factor=pen.vec)
   
   return(list(fit,train)) },mc.set.seed=TRUE,mc.cores=6)
   
@@ -185,7 +200,7 @@ for(i in c(1:N)){
 
 
 #####################################################################################################################
-# save the objects
+# save the fit objects
 #####################################################################################################################
 
 #global_model_yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.melanoma,yhat.pancreas,yhat.ovary)
@@ -203,8 +218,8 @@ for(i in c(1:N)){
 #save(stk11_kras_tp53_genexp_yhats,file="/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/stk11_kras_tp53_genexp_yhats.Rda")
 
 # all mutations + stk11 kras tp53 mutation models
-stk11_kras_tp53_mutations_yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.melanoma,yhat.pancreas,yhat.ovary)
-save(stk11_kras_tp53_mutations_yhats,file="/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/stk11_kras_tp53_mutations_yhats.Rda")
+#stk11_kras_tp53_mutations_yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.melanoma,yhat.pancreas,yhat.ovary)
+#save(stk11_kras_tp53_mutations_yhats,file="/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/stk11_kras_tp53_mutations_yhats.Rda")
 
 
 #lkb1_mutations_model_yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.melanoma,yhat.pancreas,yhat.ovary)
@@ -229,3 +244,5 @@ save(stk11_kras_tp53_mutations_yhats,file="/home/cferte/RESULTS/MEKi/GLOBAL_MODE
 # hist(abc,col="red",breaks=50)
 # foo <- names(sort(abc,decreasing=TRUE)[1:50])
 # paste(gsub(pattern="_mut",replacement="",x=foo),collapse=" ")
+
+
