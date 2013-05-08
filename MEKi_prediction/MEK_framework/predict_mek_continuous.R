@@ -107,7 +107,7 @@ rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""))
 
 require(multicore)
 
-N=150
+N=50
 #models <- 0
 i <- 0
 
@@ -166,8 +166,6 @@ PARAL <- mclapply(X=1:N,FUN=function(x){
   
   return(list(fit,train)) },mc.set.seed=TRUE,mc.cores=6)
   
-
-
 yhat.all <- c()
 yhat.breast <- c()
 yhat.nsclc <- c()
