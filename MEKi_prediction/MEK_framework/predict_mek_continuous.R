@@ -16,16 +16,23 @@ all.prob <- ccle_probs_status[[1]]
 cell.status <- ccle_probs_status[[2]]
 
 #######################################################
-# load the validation data and make it coherent with the training data 
+# load the validation set and make it coherent with the training data 
 #######################################################
 foo  <-  loadEntity("syn418003")
-val_exp <- read.table(list.files(foo$cacheDir,full.names=TRUE),row.names=1,comment="",quote="",sep="\t",header=TRUE)
+val_exp <- read.table(list.files(foo$cacheDir,full.names=TRUE),
+                      row.names=1,comment="",quote="",sep="\t",header=TRUE)
 tmp <- sapply(strsplit(x=rownames(val_exp),split="|",fixed=TRUE),function(x){x[[1]]})
 tmp1 <- unique(c(which(tmp=="?"), which(duplicated(tmp)==TRUE)))
 val_exp <- val_exp[-tmp1,]
 rownames(val_exp) <- tmp[-tmp1]
-rm(tmp,tmp1)
+m <- apply(val_exp, 1, mean)
+val_exp <- val_exp[m > 1,]
+val_exp <- log(val_exp) + 1)
+rm(tmp,tmp1,m)
 
+#######################################################
+# Make it coherent with the training data 
+#######################################################
 tmp <- intersect(rownames(val_exp),rownames(ccle_exp))
 val_exp <- val_exp[tmp,]
 ccle_exp <- ccle_exp[tmp,]
@@ -107,7 +114,7 @@ rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""))
 
 require(multicore)
 
-N=50
+N=150
 #models <- 0
 i <- 0
 

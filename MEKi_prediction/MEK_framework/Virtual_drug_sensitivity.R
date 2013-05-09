@@ -6,6 +6,20 @@
 # predict the virtual drug sensitivity (vds) into the val_exp
 #####################################################################################################################
 
+# first use @ jguinney 's function to rescale the validation set 
+# to make it having the same mean/var than the training set
+
+normalize_to_X <- function(mean.x, sd.x, Y){
+  m.y <- rowMeans(Y)
+  sd.y <- apply(Y, 1, sd)
+  Y.adj <- (Y - m.y) * sd.x / sd.y  + mean.x 
+  Y.adj[sd.y == 0] <- mean.x[sd.y==0]
+  Y.adj
+}
+
+val_exp <- normalize_to_X(rowMeans(ccle_exp), apply(ccle_exp, 1, sd), val_exp)
+
+ 
 vds <- c()
 for(i in c(1:N)){
   fit <- PARAL[[i]][[1]]
@@ -15,9 +29,7 @@ for(i in c(1:N)){
 
 vds <- apply(vds,1,mean)
 names(vds) <- substr(colnames(val_exp),1,12)
-
 vds
-fit.original <- fit
 
 #####################################################################################################################
 # generate bootstrapped sparse (lasso) models using the gistic and the mutations calls of the same data that predict the vds
@@ -30,12 +42,19 @@ colnames(val_gistic) <- substr(colnames(val_gistic),1,12)
 rm(foo)
 sample.idx <- intersect(colnames(val_gistic),names(vds))
 
-table(is.na(val_gistic))
+# load the mutation data
+foo  <-  loadEntity("syn1676707")
+foo <- foo$objects$luad_data
+val_mut <- foo[[2]]
+colnames(val_mut) <- substr(colnames(val_mut),1,12)
+colnames(val_mut) <- gsub(pattern="-",replacement=".",x=colnames(val_mut),fixed=TRUE)
+rm(foo)
+sample.idx <- intersect(colnames(val_mut),sample.idx)
 
 # feature selection on the genes using KEGG:
 gsets <- loadEntity("syn1679661")
 gsets_all <- gsets$objects$gsets
-assign(x="gsets",gsets_all[[2]])
+assign(x="gsets",gsets_all[[1]])
 rm(gsets_all)
 tmp <- unique(c(grep(pattern="CANCER",names(gsets)), grep(pattern="LEUKEM",names(gsets)), 
          grep(pattern="MELANOM",names(gsets)), grep(pattern="GLIOM",
@@ -49,38 +68,81 @@ genes2 <- read.delim2(file="/home/cferte/cancer_gene_census.txt",header=TRUE)
 genes2 <- genes2$Symbol
 gene.idx <- unique(c(genes,genes2))
 gene.idx <- intersect(gene.idx,rownames(val_gistic))
+gene.idx <- intersect(gene.idx,rownames(val_mut))
 rm(genes,genes2,new.gsets,gsets)
 
+# transform into a mut_Amp, mut_del, mut, del, amp 
+datmut <- val_mut[gene.idx,sample.idx]
+datcnv <- val_gistic[gene.idx,sample.idx]
+
+mut_amp <- c()
+for(i in gene.idx){
+  mut_amp <- rbind(mut_amp,ifelse(datmut[i,]==1 & datcnv[i,]==1,1,0))
+}
+rownames(mut_amp) <- paste("mut_amp_",gene.idx,sep="")
+
+mut_del <- c()
+for(i in gene.idx){
+  mut_del <- rbind(mut_del,ifelse(datmut[i,]==1 & datcnv[i,]==-1,1,0))
+}
+rownames(mut_del) <- paste("mut_del_",gene.idx,sep="")
+
+mut_only <- c()
+for(i in gene.idx){
+  mut_only <- rbind(mut_only,ifelse(datmut[i,]==1 & datcnv[i,]==0,1,0))
+}
+rownames(mut_only) <- paste("mut_only_",gene.idx,sep="")
+
+del_only <- c()
+for(i in gene.idx){
+  del_only <- rbind(del_only,ifelse(datmut[i,]==0 & datcnv[i,]==-1,1,0))
+}
+rownames(del_only) <- paste("del_only_",gene.idx,sep="")
+
+amp_only <- c()
+for(i in gene.idx){
+  amp_only <- rbind(amp_only,ifelse(datmut[i,]==0 & datcnv[i,]==1,1,0))
+}
+rownames(amp_only) <- paste("amp_only_",gene.idx,sep="")
+
+
+a <- rbind(mut_amp,mut_del)
+b <- rbind(del_only,mut_only)
+global.matrix <- rbind(rbind(a,b),amp_only)
+
+rm(a,b,datmut,datcnv,amp_only,del_only,mut_only,mut_amp,mut_del)
 
 # train sparse models
 require(multicore)
 
-N=150
+N=300
 #models <- 0
 
 i <- 0
 
 
-PARAL <- mclapply(X=1:N,FUN=function(x){
+NEW.PARAL <- mclapply(X=1:N,FUN=function(x){
   print(i)
   i <- 1+1
   
 train <- sample(sample.idx,replace=TRUE)
-cv.fit <- cv.glmnet(x=t(val_gistic[gene.idx,train]),y=vds[train],alpha=1)
-fit <-glmnet(x=t(val_gistic[gene.idx,train]),y=vds[train],alpha=1,lambda=cv.fit$lambda.1se)
+cv.fit <- cv.glmnet(x=t(global.matrix[,train]),y=vds[train],alpha=1)
+fit <-glmnet(x=t(global.matrix[,train]),y=vds[train],alpha=1,lambda=cv.fit$lambda.1se)
   
 return(list(fit))},mc.set.seed=TRUE,mc.cores=6)
 
 
 # return the most selected features
-abc <- matrix(data=NA, nrow=length(gene.idx),ncol=N)
-rownames(abc) <- gene.idx
+abc <- matrix(data=NA, nrow=nrow(global.matrix),ncol=N)
+rownames(abc) <- rownames(global.matrix)
 abc <- sapply(1:N, function(x){
-  foo <- PARAL[[x]][[1]]
+  foo <- NEW.PARAL[[x]][[1]]
   abc[,x] <- as.numeric(foo$beta)
 })
 
 top.features <- apply(abc,1,function(x){mean(x,na.rm=TRUE)})
-names(top.features) <- gene.idx
+names(top.features) <- rownames(global.matrix)
 order <- names(sort(abs(top.features),decreasing=TRUE))[1:200]
 top.features[order]
+
+n.incoporated <- apply(abc,1,function(x){length(x!=0)/N})
