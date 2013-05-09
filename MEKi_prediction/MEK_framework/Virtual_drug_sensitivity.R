@@ -142,7 +142,11 @@ abc <- sapply(1:N, function(x){
 
 top.features <- apply(abc,1,function(x){mean(x,na.rm=TRUE)})
 names(top.features) <- rownames(global.matrix)
-order <- names(sort(abs(top.features),decreasing=TRUE))[1:200]
+order <- names(sort(abs(top.features),decreasing=TRUE))[1:20]
 top.features[order]
 
-n.incoporated <- apply(abc,1,function(x){length(x!=0)/N})
+
+top.incorporated <- apply(abc,1,function(x){length(which(x!=0))})
+names(top.incorporated) <- rownames(global.matrix)
+sort(top.incorporated,decreasing=TRUE)[1:30]
+hist(log(top.incorporated),col="red")
