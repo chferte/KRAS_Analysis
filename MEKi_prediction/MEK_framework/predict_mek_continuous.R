@@ -30,6 +30,21 @@ val_exp <- val_exp[m > 1,]
 val_exp <- log(val_exp) + 1)
 rm(tmp,tmp1,m)
 
+#  use author: jguinney 's function to rescale the validation set 
+# to make it having the same mean/var than the training set
+
+normalize_to_X <- function(mean.x, sd.x, Y){
+  m.y <- rowMeans(Y)
+  sd.y <- apply(Y, 1, sd)
+  Y.adj <- (Y - m.y) * sd.x / sd.y  + mean.x 
+  Y.adj[sd.y == 0] <- mean.x[sd.y==0]
+  Y.adj
+}
+
+val_exp <- normalize_to_X(rowMeans(ccle_exp), apply(ccle_exp, 1, sd), val_exp)
+
+
+
 #######################################################
 # Make it coherent with the training data 
 #######################################################

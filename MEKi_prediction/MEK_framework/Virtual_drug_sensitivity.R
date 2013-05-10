@@ -6,20 +6,6 @@
 # predict the virtual drug sensitivity (vds) into the val_exp
 #####################################################################################################################
 
-# first use @ jguinney 's function to rescale the validation set 
-# to make it having the same mean/var than the training set
-
-normalize_to_X <- function(mean.x, sd.x, Y){
-  m.y <- rowMeans(Y)
-  sd.y <- apply(Y, 1, sd)
-  Y.adj <- (Y - m.y) * sd.x / sd.y  + mean.x 
-  Y.adj[sd.y == 0] <- mean.x[sd.y==0]
-  Y.adj
-}
-
-val_exp <- normalize_to_X(rowMeans(ccle_exp), apply(ccle_exp, 1, sd), val_exp)
-
- 
 vds <- c()
 for(i in c(1:N)){
   fit <- PARAL[[i]][[1]]
@@ -115,7 +101,7 @@ rm(a,b,datmut,datcnv,amp_only,del_only,mut_only,mut_amp,mut_del)
 # train sparse models
 require(multicore)
 
-N=300
+N=500
 #models <- 0
 
 i <- 0
@@ -134,11 +120,12 @@ return(list(fit))},mc.set.seed=TRUE,mc.cores=6)
 
 # return the most selected features
 abc <- matrix(data=NA, nrow=nrow(global.matrix),ncol=N)
-rownames(abc) <- rownames(global.matrix)
 abc <- sapply(1:N, function(x){
   foo <- NEW.PARAL[[x]][[1]]
   abc[,x] <- as.numeric(foo$beta)
 })
+
+rownames(abc) <- rownames(global.matrix)
 
 top.features <- apply(abc,1,function(x){mean(x,na.rm=TRUE)})
 names(top.features) <- rownames(global.matrix)
@@ -150,3 +137,27 @@ top.incorporated <- apply(abc,1,function(x){length(which(x!=0))})
 names(top.incorporated) <- rownames(global.matrix)
 sort(top.incorporated,decreasing=TRUE)[1:30]
 hist(log(top.incorporated),col="red")
+
+
+
+# play with the the selected features
+
+
+abcd <- abc
+abcd[abcd!=0] <- 1
+abcd[abcd==0] <- 0
+
+i <- 5
+plot(density(abcd[top.selected.names[i],]),main=paste(top.selected.names[i]))
+
+top.selected.names <- names(sort(top.incorporated,decreasing=TRUE))
+par(oma=c(2,2,4,8))
+M <- abc[top.selected.names[1:150],]
+heatmap.2(M,trace="none",col=greenred(10),tracecol=NULL,main="fit$beta values")
+
+top.selected.names <- names(sort(top.incorporated,decreasing=TRUE)[1:50])
+par(oma=c(2,2,4,8))
+M1 <- abcd[top.selected.names,]
+heatmap.2(M1,trace="none",col=greenred(2),tracecol=NULL,main="binary matrix")
+
+
