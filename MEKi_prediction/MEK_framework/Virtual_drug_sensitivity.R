@@ -6,16 +6,89 @@
 # predict the virtual drug sensitivity (vds) into the val_exp
 #####################################################################################################################
 
+normalize_to_X <- function(mean.x, sd.x, Y){
+  m.y <- rowMeans(Y)
+  sd.y <- apply(Y, 1, sd)
+  Y.adj <- (Y - m.y) * sd.x / sd.y  + mean.x 
+  Y.adj[sd.y == 0] <- mean.x[sd.y==0]
+  Y.adj
+}
+
+val.set2 <- normalize_to_X(rowMeans(global.matrix), apply(global.matrix, 1, sd), val.set)
+
+# see what is the structure of this
+s <- svd(val.set2[,paste("PDX_",1:38,sep="")])
+plot(s$d^2/(sum(s$d^2)))
+plot(s$v[,1],s$v[,2],pch=19,col=c(rep(1,times=19),rep(2,times=19)))
+plot(s$v[,4],s$v[,3],pch=19,col=c(rep(1,times=19),rep(2,times=19)))
+
+
+# pc1 is now NULL
+#s$v[1] <- 0
+#X <- s$u %*% diag(s$d) %*% t(s$v)
+
+# let's remove the three outliers
+
+#val.set3 <- val.set2[,which(s$v[,1]<.2)]
+
 vds <- c()
 for(i in c(1:N)){
   fit <- PARAL[[i]][[1]]
-  vds<- cbind(vds,as.numeric(predict(fit, t(val_exp))))
-  print(i)
+  vds<- cbind(vds,as.numeric(predict(fit, t(val.set2))))
 }
 
 vds <- apply(vds,1,mean)
-names(vds) <- substr(colnames(val_exp),1,12)
-vds
+names(vds) <- substr(colnames(val.set2),1,12)
+
+boxplot(vds[paste("PDX_",1:38,sep="")]~ c(rep("untreated",times=19),rep("treated",times=19)),outline=FALSE)
+wilcox.test(vds[paste("PDX_",1:38,sep="")]~ c(rep("untreated",times=19),rep("treated",times=19)),paired=TRUE)
+stripchart(list("treated"=vds[paste("PDX_",20:38,sep="")],"untreated"=vds[paste("PDX_",1:19,sep="")]),method="jitter",
+           pch=19,col=c("red","black"),vertical=TRUE,add=TRUE)
+summary(vds[paste("PDX_",20:38,sep="")])
+summary(vds[paste("PDX_",1:19,sep="")])
+vds.null <- c()
+for(i in c(1:N)){
+  fit <- PARAL[[i]][[1]]
+  vds.null <- cbind(vds.null,as.numeric(predict(fit, t(val.set2[sample(rownames(val.set2),replace=FALSE),]))))
+}
+vds.null <- apply(vds.null,1,mean)
+names(vds.null) <- names(vds)
+boxplot(vds.null[paste("PDX_",1:38,sep="")]~ c(rep("untreated",times=19),rep("treated",times=19)))
+wilcox.test(vds.null[paste("PDX_",1:38,sep="")]~ c(rep("untreated",times=19),rep("treated",times=19)),paired=TRUE)
+
+
+# plot 1:19 and 20 38 in differet colors
+nTT <- paste("PDX_",1:19,sep="")
+TT <- names(vds)[names(vds)!=nTT]
+nTT
+vec.res <- response$X28
+names(vec.res) <- response$Days
+tmp <- names(sort(vec.res[names(vds)]))
+
+plot(100*vec.res[tmp],vds[tmp],pch=19,type="p",
+     xlab=" Day 21 response (%)", ylab="predicted MEK sensitivity score",cex=1.2)
+q <- lowess(100*vec.res[tmp],vds[tmp])
+lines(q$x,q$y,col="royalblue",lwd=4,lty=4,type="l")
+cor <- cor.test(vec.res[names(vds)],vds,method="spearman",pch=19)
+text(x=30,y=1.5,labels=paste("p.value:",format(cor$p.value,digit=3),sep=" "),adj=0)
+text(x=30,y=1.6,labels=paste("Spearman rho:",format(cor$estimate,digit=3),sep=" "),adj=0)
+
+
+# try to aggregate all the correlations from day 1 to day 
+par(mfrow=c(2,3))
+rho <- c()
+pval <- c()
+for(i in 2:ncol(response)){
+rho <- c(rho,cor.test(response[names(vds),i],vds,method="spearman",pch=19)$estimate)
+pval <- c(pval,cor.test(response[names(vds),i],vds,method="spearman",pch=19)$p.value)
+plot(vds,response[names(vds),i], pch=19,
+     xlab="predited MEK sensitivity", ylab="tumor response")
+}
+# save the vds (virtual drug sensitivity)
+#save(vds,file="/home/cferte/RESULTS/vds_lung_mut.Rda")
+#save(vds,file="/home/cferte/RESULTS/vds_crc_mut.Rda")
+#save(vds,file="/home/cferte/RESULTS/vds_breast_mut.Rda")
+#save(vds,file="/home/cferte/RESULTS/vds_laml_mut.Rda")
 
 #####################################################################################################################
 # generate bootstrapped sparse (lasso) models using the gistic and the mutations calls of the same data that predict the vds

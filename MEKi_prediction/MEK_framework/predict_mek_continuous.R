@@ -18,40 +18,44 @@ cell.status <- ccle_probs_status[[2]]
 #######################################################
 # load the validation set and make it coherent with the training data 
 #######################################################
-foo  <-  loadEntity("syn418003")
-val_exp <- read.table(list.files(foo$cacheDir,full.names=TRUE),
-                      row.names=1,comment="",quote="",sep="\t",header=TRUE)
-tmp <- sapply(strsplit(x=rownames(val_exp),split="|",fixed=TRUE),function(x){x[[1]]})
-tmp1 <- unique(c(which(tmp=="?"), which(duplicated(tmp)==TRUE)))
-val_exp <- val_exp[-tmp1,]
-rownames(val_exp) <- tmp[-tmp1]
-m <- apply(val_exp, 1, mean)
-val_exp <- val_exp[m > 1,]
-val_exp <- log(val_exp) + 1)
-rm(tmp,tmp1,m)
+# foo  <-  loadEntity("syn418003")
+# val_exp <- read.table(list.files(foo$cacheDir,full.names=TRUE),
+#                       row.names=1,comment="",quote="",sep="\t",header=TRUE)
+# tmp <- sapply(strsplit(x=rownames(val_exp),split="|",fixed=TRUE),function(x){x[[1]]})
+# tmp1 <- unique(c(which(tmp=="?"), which(duplicated(tmp)==TRUE)))
+# val_exp <- val_exp[-tmp1,]
+# rownames(val_exp) <- tmp[-tmp1]
+# m <- apply(val_exp, 1, mean)
+# val_exp <- val_exp[m > 1,]
+# val_exp <- log(val_exp) + 1
+# rm(tmp,tmp1,m)
+
+# load the crc gene expression tcga data
+#source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_crc_tcga_data.R")
+
+# load the breast gene expression tcga data
+#source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_breast_tcga_data.R")
+
+#load the AML tcga data
+#source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_laml_tcga_data.R")
+
+# load the crc pdx nki gene expression data
+source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/validation_PDX_NKI.R")
+
+
 
 #  use author: jguinney 's function to rescale the validation set 
 # to make it having the same mean/var than the training set
+  
 
-normalize_to_X <- function(mean.x, sd.x, Y){
-  m.y <- rowMeans(Y)
-  sd.y <- apply(Y, 1, sd)
-  Y.adj <- (Y - m.y) * sd.x / sd.y  + mean.x 
-  Y.adj[sd.y == 0] <- mean.x[sd.y==0]
-  Y.adj
-}
-
-val_exp <- normalize_to_X(rowMeans(ccle_exp), apply(ccle_exp, 1, sd), val_exp)
-
-
-
-#######################################################
-# Make it coherent with the training data 
-#######################################################
-tmp <- intersect(rownames(val_exp),rownames(ccle_exp))
-val_exp <- val_exp[tmp,]
-ccle_exp <- ccle_exp[tmp,]
-rm(tmp)
+# # load the lung mutation data as val set
+# foo  <-  loadEntity("syn1676707")
+# foo <- foo$objects$luad_data
+# val_mut <- foo[[2]]
+# colnames(val_mut) <- substr(colnames(val_mut),1,12)
+# colnames(val_mut) <- gsub(pattern="-",replacement=".",x=colnames(val_mut),fixed=TRUE)
+# rm(foo)
+# val.set <- val_mut
 
 #######################################################
 # predictive modeling
@@ -59,128 +63,52 @@ rm(tmp)
 # training in the gene expression data of all cells. 
 #######################################################
 
-# define globalmatrix (without eigengenes)
-#global.matrix <- rbind(ccle_exp,ccle_cnv,ccle_mut)
-#rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""),paste(rownames(ccle_cnv),"_cnv",sep=""),paste(rownames(ccle_mut),"_mut",sep=""))
-
 # define globalmatrix (gene expression only)
 global.matrix <- ccle_exp
-rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""))
-
-# define globalmatrix (gene expression + mutations)
-#global.matrix <- rbind(ccle_exp,ccle_mut[c("STK11","TP53","KRAS"),])
-#rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""),paste(rownames(ccle_mut[c("STK11","TP53","KRAS"),]),"_mut",sep=""))
 
 # define globalmatrix (mutations only)
 #global.matrix <- ccle_mut
-#rownames(global.matrix) <- paste(rownames(ccle_mut),"_mut",sep="")
 
-# define globalmatrix (the "3" lung mutations)
-#global.matrix <- ccle_mut[c("STK11","TP53","KRAS"),]
-#rownames(global.matrix) <- paste(rownames(ccle_mut[c("STK11","TP53","KRAS"),]),"_mut",sep="")
+#######################################################
+# Make the val set coherent with the training data 
+#######################################################
+tmp <- intersect(rownames(val.set),rownames(global.matrix))
+val.set <- val.set[tmp,]
+global.matrix <- global.matrix[tmp,]
+rm(tmp)
 
-# create a vector for penalty
+# create a penalty vector
 #pen.vec <- rep(x=1,times=nrow(global.matrix))
-#pen.vec[which(rownames(global.matrix) %in% c("STK11_mut","TP53_mut","KRAS_mut"))] <- 0
+#pen.vec[which(rownames(global.matrix) %in% c("STK11","TP53","KRAS"))] <- 0
 #pen.vec[which(rownames(global.matrix) %in% c("BRAF_mut","PTEN_mut","CTNNB1_mut","PIK3CA_mut","TP53_mut","KRAS_mut"))] <- 0
 #names(pen.vec) <- rownames(global.matrix)
 
 
-
-# # define globalmatrix (with tissue specificity)
-# abc <- model.matrix(~tissue.origin)
-# tmp <- colnames(abc)
-# abc <- t(abc)
-# rownames(abc) <- tmp
-# colnames(abc) <- names(tissue.origin)
-# rm(tmp)
-# global.matrix <- rbind(ccle_exp,ccle_cnv,ccle_mut,abc)
-# rownames(global.matrix) <- c(paste(rownames(ccle_exp),"_exp",sep=""),paste(rownames(ccle_cnv),"_cnv",sep=""),paste(rownames(ccle_mut),"_mut",sep=""),rownames(abc))
-
-# not penalize the tissue spec matrix
-#pen.vec <- c(rep(1,times=nrow(global.matrix)-nrow(abc)),rep(0,times=nrow(abc)))
-
-
-# # assign weights base on the density of ActArea
-# tmp <- all.prob[[1]]
-# prob.weights <- as.numeric(apply(tmp,1,function(x){max(x)}))
-# prob.weights <- prob.weights
-# names(prob.weights) <- rownames(tmp)
-# plot(density(prob.weights), main="posterior probabilities weights")
-
-# define globalmatrix2 (with eigengenes)
-# eigengenes <- t(eigengenes[colnames(global.matrix),c(1:30)])
-# global.matrix2 <- rbind(global.matrix,eigengenes)
-# rownames(global.matrix2) <- c(rownames(global.matrix),paste("PC",c(1:30),sep=""))
-
-# assign weights base on the density of ActArea
-# mean.mek.sens <- apply(ccle_drug[mek.cells,mek.inhib],1,mean)
-# density.id <- sapply(c(1:length(mean.mek.sens)),function(x){min(which(density(mean.mek.sens)$x>mean.mek.sens[x]))})
-# density.weights <- log(1/(density(mean.mek.sens)$y[density.id]))
-# names(density.weights) <- names(mean.mek.sens)
-# rm(density.id,mean.mek.sens)
-# density.weights  <- rep(1,times=length(density.weights))                    
-# 
-# summary(density.weights)
-# # boxplot(density.weights)
-# density.weights <- rep(0.5,times=length(mek.cells))
-# names(density.weights) <- mek.cells
-# density.weights[names(new.weight)] <- new.weight
-
 require(multicore)
 
-N=150
-#models <- 0
+N=100
 i <- 0
 
-# # 
-# # set up the Q1:Q4 for running balanced models
-# q25 <- quantile(apply(ccle_drug[mek.cells,mek.inhib],1,mean),probs=.35) 
-# q50 <- quantile(apply(ccle_drug[mek.cells,mek.inhib],1,mean),probs=.5)
-# q75 <- quantile(apply(ccle_drug[mek.cells,mek.inhib],1,mean),probs=.65)
-# Q1 <- names(which(apply(ccle_drug[mek.cells,mek.inhib],1,mean) < q25))
-# Q2 <- names(which(apply(ccle_drug[mek.cells,mek.inhib],1,mean) > q25 & apply(ccle_drug[mek.cells,mek.inhib],1,mean) < q50 ))
-# Q3 <- names(which(apply(ccle_drug[mek.cells,mek.inhib],1,mean) > q50 & apply(ccle_drug[mek.cells,mek.inhib],1,mean) < q75 ))
-# Q4 <- names(which(apply(ccle_drug[mek.cells,mek.inhib],1,mean) > q75))
-# rm(q25,q50,q75)
 
 
 
 PARAL <- mclapply(X=1:N,FUN=function(x){
   print(i)
   i <- 1+1
-#while(models<N)
-#{
   
   #standard sampling
-  #train <- sample(mek.cells,replace=TRUE)
+  train <- sample(mek.cells,replace=TRUE)
   #train <- sample(mek.cells[-which(mek.cells %in% c(hemal.mek.cells,glioma.mek.cells,melanoma.mek.cells))],replace=TRUE)
   
-  # balanced model
-  #train <- c(sample(x=c(Q1),replace=TRUE,size=220),sample(Q4,replace=TRUE,size=220))
-  
-  # weighted model on the distribution
+  # tissue specific models
   #train <- sample(mek.cells,replace=TRUE)
   
-  
-  # tissue specific models
-  train <- sample(mek.cells,replace=TRUE)
-  
-  # weighted lung models
-  #train <- c(sample(mek.cells,replace=TRUE,size=144),sample(nsclc.mek.cells,replace=TRUE))
-  
-  # mixed balanced & tissue specific model
-  #train  <- c(sample(nsclc.mek.cells,replace=TRUE),sample(x=c(Q1),replace=TRUE,size=36),sample(Q4,replace=TRUE,size=36))
   
   vec.train <-apply(ccle_drug[train,mek.inhib],1,mean)
   
   # standard training
   cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1)
   fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se)
-  
-  # weighted models
-  #cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1,weights=prob.weights[train])
-  #fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se,weights=prob.weights[train])
   
   # penalty factor
   #cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1,penalty.factor=pen.vec)
@@ -216,7 +144,6 @@ for(i in c(1:N)){
   yhat.melanoma <- c(yhat.melanoma,list(predict(fit,t(global.matrix[,melanoma.mek.cells[-which(melanoma.mek.cells %in% train)]]))))
   yhat.hemal <- c(yhat.hemal,list(predict(fit,t(global.matrix[,hemal.mek.cells[-which(hemal.mek.cells %in% train)]]))))
   print(i)}  
-
 
 
 #####################################################################################################################
@@ -264,5 +191,4 @@ for(i in c(1:N)){
 # hist(abc,col="red",breaks=50)
 # foo <- names(sort(abc,decreasing=TRUE)[1:50])
 # paste(gsub(pattern="_mut",replacement="",x=foo),collapse=" ")
-
 

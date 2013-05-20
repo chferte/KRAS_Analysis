@@ -17,8 +17,14 @@ cell.status <- ccle_probs_status[[2]]
 cells <- list(mek.cells,nsclc.mek.cells,breast.mek.cells,crc.mek.cells,hemal.mek.cells,melanoma.mek.cells,pancreas.mek.cells,ovary.mek.cells)
 cell.names <- list("ALL CELLS","NSCLC","BREAST","CRC","Hematologic\nMalignancies","MELANOMA","PANCREAS","OVARY")
 
+yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.melanoma,yhat.pancreas,yhat.ovary)
+
+
 #load("/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/global_model_yhats.Rda")
 #yhats <- global_model_yhats
+
+#load("/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/washing_machine_lung_model_yhats.Rda")
+#yhats <- washing_machine_lung_model_yhats
 
 #load("/home/cferte/RESULTS/MEKi/TISSUE_SPECIFIC_MODELS/ROBJECTS/pure_tissue.models.Rda")
 #yhats <- pure_tissue_models_yhats
@@ -26,8 +32,8 @@ cell.names <- list("ALL CELLS","NSCLC","BREAST","CRC","Hematologic\nMalignancies
 #load("/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/stk11_kras_tp53_yhats.Rda")
 #yhats <- stk11_kras_tp53_yhats
 
-load("/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/stk11_kras_tp53_mutations_yhats.Rda")
-yhats <- stk11_kras_tp53_mutations_yhats
+#load("/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/stk11_kras_tp53_mutations_yhats.Rda")
+#yhats <- stk11_kras_tp53_mutations_yhats
 
 #load("/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/lkb1_mutations_model_yhats.Rda")
 #yhats <- lkb1_mutations_model_yhats
