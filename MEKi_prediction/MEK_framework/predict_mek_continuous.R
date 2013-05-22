@@ -18,6 +18,8 @@ cell.status <- ccle_probs_status[[2]]
 #######################################################
 # load the validation set and make it coherent with the training data 
 #######################################################
+
+
 # foo  <-  loadEntity("syn418003")
 # val_exp <- read.table(list.files(foo$cacheDir,full.names=TRUE),
 #                       row.names=1,comment="",quote="",sep="\t",header=TRUE)
@@ -40,22 +42,16 @@ cell.status <- ccle_probs_status[[2]]
 #source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_laml_tcga_data.R")
 
 # load the crc pdx nki gene expression data
-source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/validation_PDX_NKI.R")
+#source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/validation_PDX_NKI.R")  
 
-
-
-#  use author: jguinney 's function to rescale the validation set 
-# to make it having the same mean/var than the training set
-  
-
-# # load the lung mutation data as val set
-# foo  <-  loadEntity("syn1676707")
-# foo <- foo$objects$luad_data
-# val_mut <- foo[[2]]
-# colnames(val_mut) <- substr(colnames(val_mut),1,12)
-# colnames(val_mut) <- gsub(pattern="-",replacement=".",x=colnames(val_mut),fixed=TRUE)
-# rm(foo)
-# val.set <- val_mut
+# load the lung mutation data as val set
+foo  <-  loadEntity("syn1676707")
+foo <- foo$objects$luad_data
+val_mut <- foo[[2]]
+colnames(val_mut) <- substr(colnames(val_mut),1,12)
+colnames(val_mut) <- gsub(pattern="-",replacement=".",x=colnames(val_mut),fixed=TRUE)
+rm(foo)
+val.set <- val_mut
 
 #######################################################
 # predictive modeling
@@ -64,10 +60,10 @@ source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/v
 #######################################################
 
 # define globalmatrix (gene expression only)
-global.matrix <- ccle_exp
+#global.matrix <- ccle_exp
 
 # define globalmatrix (mutations only)
-#global.matrix <- ccle_mut
+global.matrix <- ccle_mut
 
 #######################################################
 # Make the val set coherent with the training data 
@@ -77,20 +73,32 @@ val.set <- val.set[tmp,]
 global.matrix <- global.matrix[tmp,]
 rm(tmp)
 
+#######################################################
 # create a penalty vector
-#pen.vec <- rep(x=1,times=nrow(global.matrix))
-#pen.vec[which(rownames(global.matrix) %in% c("STK11","TP53","KRAS"))] <- 0
-#pen.vec[which(rownames(global.matrix) %in% c("BRAF_mut","PTEN_mut","CTNNB1_mut","PIK3CA_mut","TP53_mut","KRAS_mut"))] <- 0
-#names(pen.vec) <- rownames(global.matrix)
+#######################################################
+# pen.vec <- rep(x=1,times=nrow(global.matrix))
+# pen.vec[which(rownames(global.matrix) %in% c("STK11","TP53","KRAS"))] <- 0
+# pen.vec[which(rownames(global.matrix) %in% c("BRAF_mut","PTEN_mut","CTNNB1_mut","PIK3CA_mut","TP53_mut","KRAS_mut"))] <- 0
+# names(pen.vec) <- rownames(global.matrix)
 
 
+#######################################################
+# create a penalty vector for 
+#######################################################
+# pen.vec <- rep(x=1,times=nrow(global.matrix))
+# pen.vec[which(rownames(global.matrix) %in% c("STK11","TP53","KRAS"))] <- 0
+# pen.vec[which(rownames(global.matrix) %in% c("BRAF_mut","PTEN_mut","CTNNB1_mut","PIK3CA_mut","TP53_mut","KRAS_mut"))] <- 0
+# names(pen.vec) <- rownames(global.matrix)
+
+
+
+#######################################################
+# start the statistical learning process
+#######################################################
 require(multicore)
 
 N=100
 i <- 0
-
-
-
 
 PARAL <- mclapply(X=1:N,FUN=function(x){
   print(i)
@@ -98,24 +106,37 @@ PARAL <- mclapply(X=1:N,FUN=function(x){
   
   #standard sampling
   train <- sample(mek.cells,replace=TRUE)
+  
+  # carcinoma model (exclude hemato melanoma glioma)
   #train <- sample(mek.cells[-which(mek.cells %in% c(hemal.mek.cells,glioma.mek.cells,melanoma.mek.cells))],replace=TRUE)
   
   # tissue specific models
   #train <- sample(mek.cells,replace=TRUE)
-  
-  
+    
+  #################################
+  # set up the vector of response
+  #################################
   vec.train <-apply(ccle_drug[train,mek.inhib],1,mean)
   
-  # standard training
+ 
+  #################################
+  # fitting the model
+  #################################
+  # standard fitting
   cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1)
   fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se)
   
-  # penalty factor
+  # fitting with penalty factor
   #cv.fit <- cv.glmnet(t(global.matrix[,train]), y=vec.train,nfolds=3, alpha=.1,penalty.factor=pen.vec)
   #fit <- glmnet(x=t(global.matrix[,train]),y=vec.train,alpha=.1,lambda=cv.fit$lambda.1se,penalty.factor=pen.vec)
   
   return(list(fit,train)) },mc.set.seed=TRUE,mc.cores=6)
   
+
+#######################################################
+# get the yhats for INTERNAL Validation
+#######################################################
+
 yhat.all <- c()
 yhat.breast <- c()
 yhat.nsclc <- c()

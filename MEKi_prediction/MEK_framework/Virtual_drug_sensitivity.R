@@ -30,7 +30,7 @@ plot(s$v[,4],s$v[,3],pch=19,col=c(rep(1,times=19),rep(2,times=19)))
 # let's remove the three outliers
 
 #val.set3 <- val.set2[,which(s$v[,1]<.2)]
-
+val.set2 <- val.set
 vds <- c()
 for(i in c(1:N)){
   fit <- PARAL[[i]][[1]]
