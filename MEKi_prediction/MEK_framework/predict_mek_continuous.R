@@ -8,6 +8,9 @@
 
 # load the mek data from ccle
 source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_mek_ccle.R")
+source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_ccle_mut_oncomap.R")
+tmp <- intersect(colnames(ccle_oncomap),colnames(ccle_mut))
+
 
 # load the  cell status and probabilities
 ccle_probs_status <- loadEntity("syn1709732")
