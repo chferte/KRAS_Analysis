@@ -8,8 +8,6 @@
 
 # load the mek data from ccle
 source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_mek_ccle.R")
-source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_ccle_mut_oncomap.R")
-tmp <- intersect(colnames(ccle_oncomap),colnames(ccle_mut))
 
 
 # load the  cell status and probabilities
@@ -47,7 +45,7 @@ cell.status <- ccle_probs_status[[2]]
 # load the crc pdx nki gene expression data
 #source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/validation_PDX_NKI.R")  
 
-# load the lung mutation data as val set
+# load the tcga lung mutation data as val set
 foo  <-  loadEntity("syn1676707")
 foo <- foo$objects$luad_data
 val_mut <- foo[[2]]
@@ -65,7 +63,7 @@ val.set <- val_mut
 # define globalmatrix (gene expression only)
 #global.matrix <- ccle_exp
 
-# define globalmatrix (mutations only)
+# define globalmatrix (mutations only) for the lung model
 global.matrix <- ccle_mut
 
 #######################################################
@@ -109,6 +107,9 @@ PARAL <- mclapply(X=1:N,FUN=function(x){
   
   #standard sampling
   train <- sample(mek.cells,replace=TRUE)
+  
+  # training for the lung model idx
+  #train <- sample(cell.names.idx,replace=TRUE)
   
   # carcinoma model (exclude hemato melanoma glioma)
   #train <- sample(mek.cells[-which(mek.cells %in% c(hemal.mek.cells,glioma.mek.cells,melanoma.mek.cells))],replace=TRUE)
@@ -159,60 +160,12 @@ for(i in c(1:N)){
   yhat.breast <- c(yhat.breast,list(predict(fit,t(global.matrix[,breast.mek.cells[-which(breast.mek.cells %in% train)]]))))
   yhat.nsclc <- c(yhat.nsclc,list(predict(fit,t(global.matrix[,nsclc.mek.cells[-which(nsclc.mek.cells %in% train)]]))))
   yhat.crc <- c(yhat.crc,list(predict(fit,t(global.matrix[,crc.mek.cells[-which(crc.mek.cells %in% train)]]))))
+  #   yhat.melanoma <- c(yhat.melanoma,list(predict(fit,t(global.matrix[,melanoma.mek.cells]))))
+  #   yhat.hemal <- c(yhat.hemal,list(predict(fit,t(global.matrix[,hemal.mek.cells]))))
   
-#   yhat.glioma <- c(yhat.glioma,list(predict(fit,t(global.matrix[,glioma.mek.cells]))))
-#   yhat.melanoma <- c(yhat.melanoma,list(predict(fit,t(global.matrix[,melanoma.mek.cells]))))
-#   yhat.hemal <- c(yhat.hemal,list(predict(fit,t(global.matrix[,hemal.mek.cells]))))
   yhat.pancreas <- c(yhat.pancreas,list(predict(fit,t(global.matrix[,pancreas.mek.cells[-which(pancreas.mek.cells %in% train)]]))))
   yhat.ovary <- c(yhat.ovary,list(predict(fit,t(global.matrix[,ovary.mek.cells[-which(ovary.mek.cells %in% train)]]))))
   yhat.melanoma <- c(yhat.melanoma,list(predict(fit,t(global.matrix[,melanoma.mek.cells[-which(melanoma.mek.cells %in% train)]]))))
   yhat.hemal <- c(yhat.hemal,list(predict(fit,t(global.matrix[,hemal.mek.cells[-which(hemal.mek.cells %in% train)]]))))
   print(i)}  
-
-
-#####################################################################################################################
-# save the fit objects
-#####################################################################################################################
-
-#global_model_yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.melanoma,yhat.pancreas,yhat.ovary)
-#save(global_model_yhats,file="/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/global_model_yhats.Rda")
-
-# names(pure_tissue_models_yhats) <- c("yhat.all","yhat.nsclc","yhat.breast","yhat.crc","yhat.hemal","yhat.glioma","yhat.melanoma")
-# save(pure_tissue_models_yhats,file="/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/pure_tissue.models.Rda")
-
-# stk11 kras tp53 mutation models
-#stk11_kras_tp53_yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.melanoma,yhat.pancreas,yhat.ovary)
-#save(stk11_kras_tp53_yhats,file="/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/stk11_kras_tp53_yhats.Rda")
-
-# gene expression + stk11 kras tp53 mutation models
-#stk11_kras_tp53_genexp_yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.melanoma,yhat.pancreas,yhat.ovary)
-#save(stk11_kras_tp53_genexp_yhats,file="/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/stk11_kras_tp53_genexp_yhats.Rda")
-
-# all mutations + stk11 kras tp53 mutation models
-#stk11_kras_tp53_mutations_yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.melanoma,yhat.pancreas,yhat.ovary)
-#save(stk11_kras_tp53_mutations_yhats,file="/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/stk11_kras_tp53_mutations_yhats.Rda")
-
-
-#lkb1_mutations_model_yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.melanoma,yhat.pancreas,yhat.ovary)
-#save(lkb1_mutations_model_yhats,file="/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/lkb1_mutations_model_yhats.Rda")
-
-#ovarian_mutations_model_yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.melanoma,yhat.pancreas,yhat.ovary)
-#save(ovarian_mutations_model_yhats,file="/home/cferte/RESULTS/MEKi/GLOBAL_MODEL/ROBJECTS/ovarian_mutations_model_yhats.Rda")
-
-# global_model_tissue_adjusted_yhats <- list(yhat.all,yhat.nsclc,yhat.breast,yhat.crc,yhat.hemal,yhat.glioma,yhat.melanoma)
-# names(global_model_tissue_adjusted_yhats) <-  c("yhat.all","yhat.nsclc","yhat.breast","yhat.crc","yhat.hemal","yhat.glioma","yhat.melanoma")
-# save(global_model_tissue_adjusted_yhats,file="/home/cferte/RESULTS/MEKi/GLOBAL_MODEL_TISSUE_ADJUSTED/ROBJECTS/global_model_tissue_adjusted_yhats.Rda")
-
-
-# # which are the most frequently selected mutations ? (linear aggregation)
-# abc <- matrix(data=NA,nrow=nrow(selected[[1]]),ncol=length(selected))
-# colnames(abc) <- 1:N
-# rownames(abc) <- rownames(global.matrix)
-# for(i in 1:N){abc[,i] <- as.numeric(selected[[i]])}
-# abc[abc!=0] <- 1
-# abc <- apply(abc,1,function(x){sum(abs(x))})
-# names(abc) <-rownames(global.matrix) 
-# hist(abc,col="red",breaks=50)
-# foo <- names(sort(abc,decreasing=TRUE)[1:50])
-# paste(gsub(pattern="_mut",replacement="",x=foo),collapse=" ")
 

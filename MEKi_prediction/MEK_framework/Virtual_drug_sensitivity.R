@@ -39,6 +39,9 @@ for(i in c(1:N)){
 
 vds <- apply(vds,1,mean)
 names(vds) <- substr(colnames(val.set2),1,12)
+#save(vds,file="/home/cferte/RESULTS/vds_lung_mut2.Rda")
+
+
 
 boxplot(vds[paste("PDX_",1:38,sep="")]~ c(rep("untreated",times=19),rep("treated",times=19)),outline=FALSE)
 wilcox.test(vds[paste("PDX_",1:38,sep="")]~ c(rep("untreated",times=19),rep("treated",times=19)),paired=TRUE)
