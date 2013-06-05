@@ -42,17 +42,22 @@ cell.status <- ccle_probs_status[[2]]
 #load the AML tcga data
 #source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_laml_tcga_data.R")
 
+#load the Melanoma tcga data
+source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_laml_tcga_data.R")
+
+
 # load the crc pdx nki gene expression data
 #source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/validation_PDX_NKI.R")  
 
-# load the tcga lung mutation data as val set
-foo  <-  loadEntity("syn1676707")
-foo <- foo$objects$luad_data
-val_mut <- foo[[2]]
-colnames(val_mut) <- substr(colnames(val_mut),1,12)
-colnames(val_mut) <- gsub(pattern="-",replacement=".",x=colnames(val_mut),fixed=TRUE)
-rm(foo)
-val.set <- val_mut
+
+# # load the tcga lung mutation data as val set
+# foo  <-  loadEntity("syn1676707")
+# foo <- foo$objects$luad_data
+# val_mut <- foo[[2]]
+# colnames(val_mut) <- substr(colnames(val_mut),1,12)
+# colnames(val_mut) <- gsub(pattern="-",replacement=".",x=colnames(val_mut),fixed=TRUE)
+# rm(foo)
+# val.set <- val_mut
 
 #######################################################
 # predictive modeling
@@ -61,10 +66,10 @@ val.set <- val_mut
 #######################################################
 
 # define globalmatrix (gene expression only)
-#global.matrix <- ccle_exp
+global.matrix <- ccle_exp
 
 # define globalmatrix (mutations only) for the lung model
-global.matrix <- ccle_mut
+#global.matrix <- ccle_mut
 
 #######################################################
 # Make the val set coherent with the training data 

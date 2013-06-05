@@ -410,12 +410,13 @@ plot_features_2 <- function(F,title,effectPlot=FALSE,top=25,text.cex=.7,bubble.c
        xlim=c(min(x)-.1, max(x)+.1),
        ylim=c(0, max(y)+1),
        yaxt="n",
-       ylab="Univariate significance",
-       xlab="Importance score\n(# times selected / 100 bootstraps)",main=title)
+       ylab="Univariate significance (p value)",
+       xlab="Importance score\n(# times selected / 100 bootstraps)",
+       main=title,cex.main=.8, cex.lab=.8)
   #mtext(paste("n=",num.samples,sep=""),3)
   at.axis <- seq(0, max(y)+1,by=3)
   axis.lbl <- parse(text=paste("10^-",at.axis,sep=""))
-  axis(side=2, at=at.axis,labels=axis.lbl,las=2)
+  axis(side=2, at=at.axis,labels=axis.lbl,las=2, cex.axis=.8)
   par(xpd=TRUE)
   
   text.col <- c("dodgerblue4","black","firebrick")[cut(DF$posFreq,breaks=c(0,.3,.7,1),include.lowest=TRUE)]
@@ -425,7 +426,7 @@ plot_features_2 <- function(F,title,effectPlot=FALSE,top=25,text.cex=.7,bubble.c
   tmp <- legend(par()$usr[2]+.03,par()$usr[4],
                 legend=as.character(DF$genes),
                 pch=21,pt.bg=col,cex=text.cex,xjust=0,text.col=text.col,bty="n",
-                title="Aberration",title.col="black")
+                title="Molec. trait",title.col="black")
   
   for(i in 1:N){
     x.line <- tmp$rect$left + (tmp$text$x[i] - tmp$rect$left)/2
