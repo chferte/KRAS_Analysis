@@ -38,9 +38,13 @@ gold[gold==1] <- "KRAS only"
 gold[gold==0] <- "WT"
 table(gold)
 gold[names(which(ccle_oncomap["KRAS",tmp]==1 & ccle_oncomap["TP53",tmp]==1))] <- "KRAS TP53"
+table(ccle_oncomap["KRAS",tmp], ccle_oncomap["TP53",tmp])
+table(gold)
 gold[names(which(ccle_oncomap["KRAS",tmp]==1 & ccle_oncomap["STK11",tmp]==1))] <- "KRAS STK11"
 table(gold)
-boxplot(foo~gold,cex.lab=.8)
+boxplot(foo~gold,cex.lab=.8,outline=FALSE)
+stripchart(list(foo[which(gold=="KRAS only")],foo[which(gold=="KRAS STK11")],foo[which(gold=="WT")]),vertical=TRUE,add=TRUE,pch=19,method="jitter",col="orangered")
+wilcox.test(foo[which(gold=="WT")],foo[which(gold=="KRAS only")])
 
 foo <- ccle_drug_ActAreaNorm[nsclc.mek.cells,mek.inhib]
 foo <- apply(foo,1,mean)
@@ -51,10 +55,7 @@ table(gold)
 gold[names(which(ccle_mut["KRAS",nsclc.mek.cells]==1 & ccle_mut["TP53",nsclc.mek.cells]==1))] <- "KRAS TP53"
 gold[names(which(ccle_mut["KRAS",nsclc.mek.cells]==1 & ccle_mut["STK11",nsclc.mek.cells]==1))] <- "KRAS STK11"
 table(gold)
-boxplot(foo~gold,cex.lab=.8)
-
-
-par(mfrow=c(1,1))
-boxplot(foo~KRAS_STK11[tmp],main=" KRAS mut & STK11 mut",ylab="MEK sensitivity (Act. Area)")
-boxplot(foo~KRAS_TP53[tmp],main="KRAS mut & TP53 mut",ylab="MEK sensitivity (Act. Area)")
-
+boxplot(foo~gold,cex.lab=.8,outline=FALSE)
+stripchart(list(foo[which(gold=="KRAS only")],foo[which(gold=="KRAS STK11")],foo[which(gold=="KRAS TP53")],foo[which(gold=="WT")]),vertical=TRUE,add=TRUE,pch=19,method="jitter",col="orangered")
+wilcox.test(foo[which(gold=="WT")],foo[which(gold=="KRAS only")])
+wilcox.test(foo[which(gold=="KRAS only")],foo[which(gold=="KRAS TP53")])

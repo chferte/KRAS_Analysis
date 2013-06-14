@@ -1,9 +1,9 @@
-# charles ferté
-# sage bionetworks
+# Charles Ferté
+# Sage Bionetworks
 # June 2, 2013
 
 # load the lung virtual drug sensitivity values
-load("/home/cferte/RESULTS/vds_breast_mut.Rda")
+load("/home/cferte/RESULTS/vds_lung_mut.Rda")
 y_hat <- vds
 
 #load the data
@@ -23,12 +23,12 @@ rm(luad_all,luad_mut)
 
 # replace the luad mut by the luad mut that i have (much more samples)
 source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/cellline_2_tcga_pipeline.R")
-fMat <- build_feature_matrix(brca, gene.dict="cosmic",with.rppa=FALSE)
+fMat <- build_feature_matrix(luad, gene.dict="cosmic",with.rppa=FALSE)
 drug_fmat <- find_drug_features(y_hat,fMat, rep(TRUE, nrow(fMat)), 
-                                beta_threshold=10^-3,num.bootstraps=50)
+                                beta_threshold=10^-3,num.bootstraps=100)
 drug <- "MEK inhibitors"
 plot_features_2(drug_fmat, 
-                paste(drug," in breast cancer (n=753)",sep=""),
+                paste(drug," in luad cancer (n=327)",sep=""),
                 top=25,text.cex=.7)
 
 # plot the distribution of the top features selected in the model as a heatmap
