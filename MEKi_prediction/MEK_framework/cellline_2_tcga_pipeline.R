@@ -135,7 +135,7 @@ build_feature_matrix <- function(tcga.dat,gene.dict=c("cbio","cosmic","vogelstei
   type <- match.arg(gene.dict)
   switch(type,
          vogelstein = (driver.genes <- read.table("resources/vogelstein_driver_genes.txt",sep="\t",header=T,quote="",comment="",as.is=T)[,1]),
-         cosmic = (driver.genes <- read.table("/home/cferte/cancer_gene_census.txt",sep="\t",header=T,quote="",comment="",as.is=T)[,1]),
+         cosmic = (driver.genes <- read.table("resources/cancer_gene_census.txt",sep="\t",header=T,quote="",comment="",as.is=T)[,1]),
          cbio = (driver.genes <- read.table("./resources/cbio_cancer_genes.txt",sep="\t",header=T,as.is=T,quote="")$Gene.Symbol)
   )
   
@@ -153,25 +153,47 @@ build_feature_matrix <- function(tcga.dat,gene.dict=c("cbio","cosmic","vogelstei
     rownames(rppa.m) <- paste("prot_", rownames(rppa.m),sep="")
   }
   
-  amp.m <- t(apply(gistic.m, 1, function(x) x > 1))
-  del.m <- t(apply(gistic.m, 1, function(x) x < -1))
+  amp.m <- t(apply(gistic.m, 1, function(x) x >= 1))
+  del.m <- t(apply(gistic.m, 1, function(x) x <= -1))
   amp.m <- amp.m[apply(amp.m, 1, sum) > min.count,]
   del.m <- del.m[apply(del.m, 1, sum) > min.count,]
   mutM.m <- mutM.m[apply(mutM.m, 1, sum) > min.count, ]
   
-  idxs <- groupMatch(rownames(mutM.m), rownames(amp.m))
-  mut_amp <- mutM.m[idxs[[1]],] | amp.m[idxs[[2]],]
-  idxs <- groupMatch(rownames(mutM.m), rownames(del.m))
-  mut_del <- mutM.m[idxs[[1]],] | del.m[idxs[[2]],]
+  idxs <- intersect(rownames(mutM.m), rownames(amp.m))
+  mut_amp <- mutM.m[idxs,] | amp.m[idxs,]
+  idxs <- intersect(rownames(mutM.m), rownames(del.m))
+  mut_del <- mutM.m[idxs,] | del.m[idxs,]
+  
+  idxs <- intersect(rownames(mutM.m), rownames(mut_del))
+  I <- c()
+  for(i in idxs) 
+    {
+    if(sum(mutM.m[i,]==mut_del[i,])/ncol(mut_del) >.85)
+{ I <- c(I,i) 
+}  }
+
+ mut_del <- mut_del[setdiff(rownames(mut_del),I),]
+  
+ 
+  idxs <- intersect(rownames(mutM.m), rownames(mut_amp))
+  J <- c()
+  for(i in idxs) 
+  {
+    if(sum(mutM.m[i,]==mut_amp[i,])/ncol(mut_amp) >.85)
+    { J <- c(J,i) 
+    }  }
+  mut_amp <- mut_amp[setdiff(rownames(mut_amp),J),]
+
+  
   
   rownames(amp.m) <- paste("amp_", rownames(amp.m),sep="")
   rownames(del.m) <- paste("del_", rownames(del.m),sep="")
   rownames(mutM.m) <- paste("mut_", rownames(mutM.m),sep="")
-  rownames(mut_amp) <- paste("mut_amp_", rownames(mut_amp),sep="")
-  rownames(mut_del) <- paste("mut_del_", rownames(mut_del),sep="")
+  rownames(mut_amp) <- paste("mut_or_amp_", rownames(mut_amp),sep="")
+  rownames(mut_del) <- paste("mut_or_del_", rownames(mut_del),sep="")
   
   A <- rbind(amp.m, del.m, mutM.m, mut_amp, mut_del)
-  A <- A[rowSums(A) > 2,]
+  A <- A[rowSums(A) > min.count,]
   A
 }
 

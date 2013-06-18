@@ -13,6 +13,8 @@ synapseLogin("charles.ferte@sagebase.org","charles")
 ### magic option
 options(stringsAsFactors=FALSE)
 
+#foo <- synGet("syn1759475")
+
 #######################################################################################################
 # 1. read the maf file and name it MAF 
 #######################################################################################################
@@ -43,7 +45,6 @@ MAF1 <- MAF1[,c( "Tumor_Sample_Barcode","Hugo_Symbol","Protein_Change","Genome_C
 MAF1$Change <- MAF1$Protein_Change
 MAF1$Change[which(MAF1$Protein_Change=="")] <- MAF1$Genome_Change[which(MAF1$Protein_Change=="")] 
 MAF1 <- MAF1[,-c(3,4)]
-which(colnames(MAF1) %in% c("Protein_Change","Genome_Change"))
 MAF1$MUTID <- paste(MAF1$Hugo_Symbol,MAF1$Change,sep="_")
 
 # create a bianry matrix full of zeros with colnames equal to the sampel names and rownames equal the MUTIDs
