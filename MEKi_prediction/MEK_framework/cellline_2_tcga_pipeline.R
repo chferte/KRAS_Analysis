@@ -135,7 +135,7 @@ build_feature_matrix <- function(tcga.dat,gene.dict=c("cbio","cosmic","vogelstei
   type <- match.arg(gene.dict)
   switch(type,
          vogelstein = (driver.genes <- read.table("resources/vogelstein_driver_genes.txt",sep="\t",header=T,quote="",comment="",as.is=T)[,1]),
-         cosmic = (driver.genes <- read.table("resources/cancer_gene_census.txt",sep="\t",header=T,quote="",comment="",as.is=T)[,1]),
+         cosmic = (driver.genes <- read.table("/home/cferte/cancer_gene_census.txt",sep="\t",header=T,quote="",comment="",as.is=T)[,1]),
          cbio = (driver.genes <- read.table("./resources/cbio_cancer_genes.txt",sep="\t",header=T,as.is=T,quote="")$Gene.Symbol)
   )
   
@@ -168,7 +168,7 @@ build_feature_matrix <- function(tcga.dat,gene.dict=c("cbio","cosmic","vogelstei
   I <- c()
   for(i in idxs) 
     {
-    if(sum(mutM.m[i,]==mut_del[i,])/ncol(mut_del) >.85)
+    if(sum(mutM.m[i,]==mut_del[i,])/ncol(mut_del) >.9)
 { I <- c(I,i) 
 }  }
 
@@ -179,7 +179,7 @@ build_feature_matrix <- function(tcga.dat,gene.dict=c("cbio","cosmic","vogelstei
   J <- c()
   for(i in idxs) 
   {
-    if(sum(mutM.m[i,]==mut_amp[i,])/ncol(mut_amp) >.85)
+    if(sum(mutM.m[i,]==mut_amp[i,])/ncol(mut_amp) >.9)
     { J <- c(J,i) 
     }  }
   mut_amp <- mut_amp[setdiff(rownames(mut_amp),J),]

@@ -14,7 +14,6 @@ synapseLogin(username="charles.ferte@sagebase.org",password="charles")
 luad_all <- loadEntity("syn1676707")
 luad_all <- luad_all$objects$luad_data
 luad_mut <- luad_all[[2]]
-head(luad_mut)
 luad_mut <- luad_mut==1
 colnames(luad_mut) <- gsub(colnames(luad_mut),pattern="-",replacement=".",fixed=TRUE)
 colnames(luad_mut) <- substr(colnames(luad_mut),1,12)
@@ -35,16 +34,18 @@ plot_features_2(drug_fmat,
                 paste(drug," in luad cancer n=",ncol(fMat),sep=""),
                 top=top,text.cex=.7)
 
+
 # plot the distribution of the top features selected in the model as a heatmap
 M <- fMat[rownames(drug_fmat[[1]])[1:top],]
 M <- ifelse(M==TRUE,1,0)
 library(gplots)
 par(oma=c(0,0,0,4))
-heatmap.2(M,scale="none",trace="none",col=c("gray80","orangered"),key=FALSE)
+vec <- round(100*y_hat[colnames(M)],digits=0)
+col.vec <- redgreen(ncol(M))[vec]
+heatmap.2(M,scale="none",trace="none",col=c("gray80","orangered"),key=FALSE, ColSideColors=col.vec)
 
 # correlation matrix for the top sensitive ones
 top.sens <- rownames(drug_fmat$df)[1:top][drug_fmat$df$posFreq[1:top]>.7]
-
 foo <- fMat[top.sens,]
 library(e1071)
 H <- hamming.distance(foo)
@@ -81,7 +82,8 @@ heatmap.2(M,Rowv=FALSE,Colv="Rowv",dendrogram="none",
 # decision tree
 library(rpart)
 par(oma=c(0,0,0,0),mar=c(1,1,1,1))
-top_genes <- as.character(drug_fmat$df$genes[1:50])
+top_genes <- as.character(drug_fmat$df$genes[1:top])
+grep(pattern="mut_",x=top_genes,value=FALSE)
 idxs <- groupMatch(names(y_hat), colnames(fMat))
 y_hat.m <- y_hat[idxs[[1]]]
 sub_fmat <- fMat[top_genes, idxs[[2]]]
@@ -93,4 +95,9 @@ fit <- rpart(y_hat.m ~ M,method="anova",
           xval=50,minsplit=10))
 plot(fit)
 text(fit,use.n=TRUE,cex=.7)
+
+
+# apply the model in cell lines
+
+
 
