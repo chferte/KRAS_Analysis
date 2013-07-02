@@ -32,21 +32,21 @@ combine_probes_2_gene <- function(expr, genes, method="svd"){
   M
 }
 
-# load the colorectal data
-e <- loadEntity("syn1446274")
-read <- read.table(paste(e$cacheDir,e$files,sep="/"),header=TRUE,row.names=1,comment="")
-e <- loadEntity("syn1446195")
-coad <- read.table(paste(e$cacheDir,e$files,sep="/"),header=TRUE,row.names=1,comment="")
+# load the luad cancer tcga
+e <- loadEntity("syn418003")
+luad.rnaseq <- read.table(paste(e$cacheDir,e$files,sep="/"),header=TRUE,row.names=1,comment="",quote="",sep="\t")
 
-all(rownames(read) == rownames(coad))
-crc <- as.matrix(cbind(read,coad))
-m <- apply(crc, 1, mean)
-crc <- crc[m > 1,]
-crc <- log(crc + 1)
-crc <- crc[,grepl("TCGA",colnames(crc))]
-pat.ids <- gsub("(TCGA\\.\\w{2}\\.\\w{4}).*","\\1", colnames(crc))
-genes <- gsub("(.*?)\\|.*","\\1",rownames(crc))
-mask <- genes != "?"
-crc.g <- combine_probes_2_gene(crc[mask,],genes[mask])
-val.set <- crc.g
+is.tumor <- as.numeric(gsub("TCGA\\.\\w{2}\\.\\w{4}\\.(\\d{2}).*","\\1",colnames(luad.rnaseq))) < 10
+tmp <- luad.rnaseq[, is.tumor]
+m <- apply(tmp, 1, mean)
+tmp <- tmp[m > 1,]
+tmp <- log(tmp + 1)
+genes <- gsub("(.*?)\\|.*","\\1",rownames(tmp))
+mask <- genes != "?" & !duplicated(genes)
+luad.rnaseq.g <- tmp[mask,]
+rownames(luad.rnaseq.g) <- genes[mask]
+colnames(luad.rnaseq.g) <- gsub("(TCGA\\.\\w{2}\\.\\w{4}).*","\\1", colnames(tmp))
+
+val.set <- luad.rnaseq.g
+
 

@@ -34,17 +34,21 @@ cell.status <- ccle_probs_status[[2]]
 # rm(tmp,tmp1,m)
 
 # load the crc gene expression tcga data
-#source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_crc_tcga_data.R")
+source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_crc_tcga_data.R")
+#val.set <- crc.g
 
 # load the breast gene expression tcga data
 #source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_breast_tcga_data.R")
+
+# load the luad gene expression tcga data
+#source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_luad_tcga_data.R")
+
 
 #load the AML tcga data
 #source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_laml_tcga_data.R")
 
 #load the Melanoma tcga data
-source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_laml_tcga_data.R")
-
+#source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_laml_tcga_data.R")
 
 # load the crc pdx nki gene expression data
 #source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/validation_PDX_NKI.R")  
@@ -173,4 +177,93 @@ for(i in c(1:N)){
   yhat.melanoma <- c(yhat.melanoma,list(predict(fit,t(global.matrix[,melanoma.mek.cells[-which(melanoma.mek.cells %in% train)]]))))
   yhat.hemal <- c(yhat.hemal,list(predict(fit,t(global.matrix[,hemal.mek.cells[-which(hemal.mek.cells %in% train)]]))))
   print(i)}  
+
+# asess the perf of each model 
+
+obs.sens <- apply(ccle_drug[,mek.inhib],1,mean)
+
+# crc
+abc <- matrix(NA,nrow=length(crc.mek.cells),ncol=N)
+rownames(abc) <- crc.mek.cells
+for(i in 1:N){abc[rownames(yhat.crc[[i]]),i] <- yhat.crc[[i]]}
+boxplot(t(abc),col="red")
+COR.crc <- c()
+for(i in 1:N){
+predictor <- as.numeric(abc[which(!is.na(abc[,i])),i])
+response <- as.numeric(obs.sens[rownames(abc)[which(!is.na(abc[,i]))]])
+roc <- roc(predictor=predictor, response=response)
+COR.crc <- c(COR.crc,cor.test(predictor, response,method="spearman")$p.value)
+}  
+a <- COR.crc<.1
+print(sum(a))
+retained <- names(!is.na(apply(abc[,a],1,function(x) median(x,na.rm=TRUE))))
+print("normal")
+cor.test(apply(abc[,a],1,function(x) median(x,na.rm=TRUE))[retained],obs.sens[retained],method="spearman")
+print("turbo")
+cor.test(apply(abc,1,function(x) median(x,na.rm=TRUE)),obs.sens[crc.mek.cells],method="spearman")
+
+# breast
+abc <- matrix(NA,nrow=length(breast.mek.cells),ncol=N)
+rownames(abc) <- breast.mek.cells
+for(i in 1:N){abc[rownames(yhat.breast[[i]]),i] <- yhat.breast[[i]]}
+boxplot(t(abc),col="red")
+COR.breast <- c()
+for(i in 1:N){
+  predictor <- as.numeric(abc[which(!is.na(abc[,i])),i])
+  response <- as.numeric(obs.sens[rownames(abc)[which(!is.na(abc[,i]))]])
+  roc <- roc(predictor=predictor, response=response)
+  COR.breast <- c(COR.breast,cor.test(predictor, response,method="spearman")$p.value)
+}  
+a <- COR.breast<.1
+print(sum(a))
+retained <- names(!is.na(apply(abc[,a],1,function(x) median(x,na.rm=TRUE))))
+print("turbo")
+cor.test(apply(abc[,a],1,function(x) median(x,na.rm=TRUE))[retained],obs.sens[retained],method="spearman")
+print("normal")
+cor.test(apply(abc,1,function(x) median(x,na.rm=TRUE)),obs.sens[breast.mek.cells],method="spearman")
+
+
+# nsclc
+abc <- matrix(NA,nrow=length(nsclc.mek.cells),ncol=N)
+rownames(abc) <- nsclc.mek.cells
+for(i in 1:N){abc[rownames(yhat.nsclc[[i]]),i] <- yhat.nsclc[[i]]}
+boxplot(t(abc),col="red")
+COR.nsclc <- c()
+for(i in 1:N){
+  predictor <- as.numeric(abc[which(!is.na(abc[,i])),i])
+  response <- as.numeric(obs.sens[rownames(abc)[which(!is.na(abc[,i]))]])
+  roc <- roc(predictor=predictor, response=response)
+  COR.nsclc <- c(COR.nsclc,cor.test(predictor, response,method="spearman")$p.value)
+}  
+
+a <- COR.nsclc <.1
+print(sum(a))
+retained <- names(!is.na(apply(abc[,a],1,function(x) median(x,na.rm=TRUE))))
+print("turbo")
+cor.test(apply(abc[,a],1,function(x) median(x,na.rm=TRUE))[retained],obs.sens[retained],method="spearman")
+print("normal")
+cor.test(apply(abc,1,function(x) median(x,na.rm=TRUE)),obs.sens[nsclc.mek.cells],method="spearman")
+
+# ovary
+abc <- matrix(NA,nrow=length(ovary.mek.cells),ncol=N)
+rownames(abc) <- ovary.mek.cells
+for(i in 1:N){abc[rownames(yhat.ovary[[i]]),i] <- yhat.ovary[[i]]}
+boxplot(t(abc),col="red")
+COR.ovary <- c()
+for(i in 1:N){
+  predictor <- as.numeric(abc[which(!is.na(abc[,i])),i])
+  response <- as.numeric(obs.sens[rownames(abc)[which(!is.na(abc[,i]))]])
+  roc <- roc(predictor=predictor, response=response)
+  COR.ovary <- c(COR.ovary,cor.test(predictor, response,method="spearman")$p.value)
+}  
+
+a <- COR.ovary <.1
+print(sum(a))
+retained <- names(!is.na(apply(abc[,a],1,function(x) median(x,na.rm=TRUE))))
+print("turbo")
+cor.test(apply(abc[,a],1,function(x) median(x,na.rm=TRUE))[retained],obs.sens[retained],method="spearman")
+print("normal")
+cor.test(apply(abc,1,function(x) median(x,na.rm=TRUE)),obs.sens[ovary.mek.cells],method="spearman")
+
+
 
