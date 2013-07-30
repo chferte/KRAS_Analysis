@@ -1,4 +1,6 @@
 
+# load crc tcga rnsa seq data
+
 library(synapseClient)
 library(cgdsr)
 library(glmnet)

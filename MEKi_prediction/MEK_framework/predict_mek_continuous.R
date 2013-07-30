@@ -20,6 +20,21 @@ cell.status <- ccle_probs_status[[2]]
 # load the validation set and make it coherent with the training data 
 #######################################################
 
+# # load all the expr data of LUNG CRC MELANOMA HEMATO BREAST OVARIAN
+# load("/home/jguinney/data/TCGA_ds_ver2.rda")
+# luad.expr <- luad[[1]]
+# crc.expr <- crc[[1]]
+# skcm.expr <- skcm[[1]]
+# laml.expr <- laml[[1]]
+# brca.expr <- brca[[1]]
+# ov.expr <- ov[[1]]
+# 
+# tmp <- intersect(rownames(luad.expr),rownames(crc.expr))
+# tmp <- intersect(tmp,rownames(crc.expr))
+# tmp <- intersect(tmp,rownames(skcm.expr))
+# tmp <- intersect(tmp,rownames(laml.expr))
+# tmp <- intersect(tmp,rownames(brca.expr))
+# tmp <- intersect(tmp,rownames(ov.expr))
 
 # foo  <-  loadEntity("syn418003")
 # val_exp <- read.table(list.files(foo$cacheDir,full.names=TRUE),
@@ -33,26 +48,24 @@ cell.status <- ccle_probs_status[[2]]
 # val_exp <- log(val_exp) + 1
 # rm(tmp,tmp1,m)
 
-# load the crc gene expression tcga data
-source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_crc_tcga_data.R")
-#val.set <- crc.g
-
-# load the breast gene expression tcga data
-#source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_breast_tcga_data.R")
-
-# load the luad gene expression tcga data
-#source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_luad_tcga_data.R")
-
-
-#load the AML tcga data
-#source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_laml_tcga_data.R")
+# # load the crc gene expression tcga data
+# source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_crc_tcga_data.R")
+# #val.set <- crc.g
+# 
+# # load the breast gene expression tcga data
+# source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_breast_tcga_data.R")
+# 
+# # load the luad gene expression tcga data
+# source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_luad_tcga_data.R")
+# 
+# #load the AML tcga data
+# source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_laml_tcga_data.R")
 
 #load the Melanoma tcga data
 #source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_laml_tcga_data.R")
 
 # load the crc pdx nki gene expression data
 #source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/validation_PDX_NKI.R")  
-
 
 # # load the tcga lung mutation data as val set
 # foo  <-  loadEntity("syn1676707")
@@ -62,6 +75,18 @@ source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/l
 # colnames(val_mut) <- gsub(pattern="-",replacement=".",x=colnames(val_mut),fixed=TRUE)
 # rm(foo)
 # val.set <- val_mut
+
+# load the nki pdx data
+#source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_crc_NKI_pdx_data.R")
+
+# load the array express xenografts mek data
+source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/load_crc_MEXP3557_data.R")
+
+# load the GSE18232 data
+# load("/home/cferte/resources/GSE18232/curated_GSE18232_rda" )
+# val.set <- tmp[[1]]
+# pheno <- tmp[[2]]
+# rm(tmp)
 
 #######################################################
 # predictive modeling
@@ -79,8 +104,8 @@ global.matrix <- ccle_exp
 # Make the val set coherent with the training data 
 #######################################################
 tmp <- intersect(rownames(val.set),rownames(global.matrix))
-val.set <- val.set[tmp,]
 global.matrix <- global.matrix[tmp,]
+val.set <- val.set[tmp,]
 rm(tmp)
 
 #######################################################
@@ -107,7 +132,7 @@ rm(tmp)
 #######################################################
 require(multicore)
 
-N=100
+N=50
 i <- 0
 
 PARAL <- mclapply(X=1:N,FUN=function(x){
@@ -146,6 +171,8 @@ PARAL <- mclapply(X=1:N,FUN=function(x){
   return(list(fit,train)) },mc.set.seed=TRUE,mc.cores=6)
   
 
+#save(PARAL,file="/home/cferte/Bootstrp_300_gene_exp_mek_models.rda")
+
 #######################################################
 # get the yhats for INTERNAL Validation
 #######################################################
@@ -169,10 +196,9 @@ for(i in c(1:N)){
   yhat.breast <- c(yhat.breast,list(predict(fit,t(global.matrix[,breast.mek.cells[-which(breast.mek.cells %in% train)]]))))
   yhat.nsclc <- c(yhat.nsclc,list(predict(fit,t(global.matrix[,nsclc.mek.cells[-which(nsclc.mek.cells %in% train)]]))))
   yhat.crc <- c(yhat.crc,list(predict(fit,t(global.matrix[,crc.mek.cells[-which(crc.mek.cells %in% train)]]))))
-  #   yhat.melanoma <- c(yhat.melanoma,list(predict(fit,t(global.matrix[,melanoma.mek.cells]))))
-  #   yhat.hemal <- c(yhat.hemal,list(predict(fit,t(global.matrix[,hemal.mek.cells]))))
-  
-  yhat.pancreas <- c(yhat.pancreas,list(predict(fit,t(global.matrix[,pancreas.mek.cells[-which(pancreas.mek.cells %in% train)]]))))
+  #yhat.melanoma <- c(yhat.melanoma,list(predict(fit,t(global.matrix[,melanoma.mek.cells]))))
+  #yhat.hemal <- c(yhat.hemal,list(predict(fit,t(global.matrix[,hemal.mek.cells]))))
+    yhat.pancreas <- c(yhat.pancreas,list(predict(fit,t(global.matrix[,pancreas.mek.cells[-which(pancreas.mek.cells %in% train)]]))))
   yhat.ovary <- c(yhat.ovary,list(predict(fit,t(global.matrix[,ovary.mek.cells[-which(ovary.mek.cells %in% train)]]))))
   yhat.melanoma <- c(yhat.melanoma,list(predict(fit,t(global.matrix[,melanoma.mek.cells[-which(melanoma.mek.cells %in% train)]]))))
   yhat.hemal <- c(yhat.hemal,list(predict(fit,t(global.matrix[,hemal.mek.cells[-which(hemal.mek.cells %in% train)]]))))
@@ -181,6 +207,7 @@ for(i in c(1:N)){
 # asess the perf of each model 
 
 obs.sens <- apply(ccle_drug[,mek.inhib],1,mean)
+
 
 # crc
 abc <- matrix(NA,nrow=length(crc.mek.cells),ncol=N)
@@ -191,16 +218,24 @@ COR.crc <- c()
 for(i in 1:N){
 predictor <- as.numeric(abc[which(!is.na(abc[,i])),i])
 response <- as.numeric(obs.sens[rownames(abc)[which(!is.na(abc[,i]))]])
-roc <- roc(predictor=predictor, response=response)
 COR.crc <- c(COR.crc,cor.test(predictor, response,method="spearman")$p.value)
 }  
-a <- COR.crc<.1
-print(sum(a))
-retained <- names(!is.na(apply(abc[,a],1,function(x) median(x,na.rm=TRUE))))
-print("normal")
-cor.test(apply(abc[,a],1,function(x) median(x,na.rm=TRUE))[retained],obs.sens[retained],method="spearman")
-print("turbo")
-cor.test(apply(abc,1,function(x) median(x,na.rm=TRUE)),obs.sens[crc.mek.cells],method="spearman")
+names(COR.crc) <- paste("m", seq(1:N),sep="")
+crc.models <- names(which(COR.crc<.05))
+
+# lung adeno
+abc <- matrix(NA,nrow=length(nsclc.mek.cells),ncol=N)
+rownames(abc) <- nsclc.mek.cells
+for(i in 1:N){abc[rownames(yhat.nsclc[[i]]),i] <- yhat.nsclc[[i]]}
+boxplot(t(abc),col="red")
+COR.nsclc <- c()
+for(i in 1:N){
+  predictor <- as.numeric(abc[which(!is.na(abc[,i])),i])
+  response <- as.numeric(obs.sens[rownames(abc)[which(!is.na(abc[,i]))]])
+  COR.nsclc <- c(COR.nsclc,cor.test(predictor,response,method="spearman")$p.value)
+}  
+names(COR.nsclc) <- paste("m", seq(1:N),sep="")
+nsclc.models <- names(which(COR.nsclc<.05))
 
 # breast
 abc <- matrix(NA,nrow=length(breast.mek.cells),ncol=N)
@@ -210,39 +245,41 @@ boxplot(t(abc),col="red")
 COR.breast <- c()
 for(i in 1:N){
   predictor <- as.numeric(abc[which(!is.na(abc[,i])),i])
+  if(sum(predictor,na.rm=TRUE)!=0){
   response <- as.numeric(obs.sens[rownames(abc)[which(!is.na(abc[,i]))]])
-  roc <- roc(predictor=predictor, response=response)
-  COR.breast <- c(COR.breast,cor.test(predictor, response,method="spearman")$p.value)
-}  
-a <- COR.breast<.1
-print(sum(a))
-retained <- names(!is.na(apply(abc[,a],1,function(x) median(x,na.rm=TRUE))))
-print("turbo")
-cor.test(apply(abc[,a],1,function(x) median(x,na.rm=TRUE))[retained],obs.sens[retained],method="spearman")
-print("normal")
-cor.test(apply(abc,1,function(x) median(x,na.rm=TRUE)),obs.sens[breast.mek.cells],method="spearman")
+  COR.breast <- c(COR.breast,cor.test(predictor,response,method="spearman")$p.value)
+}  else {COR.breast <- c(COR.breast,NA) }
+}
+names(COR.breast) <- paste("m", seq(1:N),sep="")
+breast.models <- names(which(COR.breast<.05))
 
-
-# nsclc
-abc <- matrix(NA,nrow=length(nsclc.mek.cells),ncol=N)
-rownames(abc) <- nsclc.mek.cells
-for(i in 1:N){abc[rownames(yhat.nsclc[[i]]),i] <- yhat.nsclc[[i]]}
+# hemal
+abc <- matrix(NA,nrow=length(hemal.mek.cells),ncol=N)
+rownames(abc) <- hemal.mek.cells
+for(i in 1:N){abc[rownames(yhat.hemal[[i]]),i] <- yhat.hemal[[i]]}
 boxplot(t(abc),col="red")
-COR.nsclc <- c()
+COR.hemal <- c()
 for(i in 1:N){
   predictor <- as.numeric(abc[which(!is.na(abc[,i])),i])
   response <- as.numeric(obs.sens[rownames(abc)[which(!is.na(abc[,i]))]])
-  roc <- roc(predictor=predictor, response=response)
-  COR.nsclc <- c(COR.nsclc,cor.test(predictor, response,method="spearman")$p.value)
+  COR.hemal <- c(COR.hemal,cor.test(predictor,response,method="spearman")$p.value)
 }  
+names(COR.hemal) <- paste("m", seq(1:N),sep="")
+hemal.models <- names(which(COR.hemal<.05))
 
-a <- COR.nsclc <.1
-print(sum(a))
-retained <- names(!is.na(apply(abc[,a],1,function(x) median(x,na.rm=TRUE))))
-print("turbo")
-cor.test(apply(abc[,a],1,function(x) median(x,na.rm=TRUE))[retained],obs.sens[retained],method="spearman")
-print("normal")
-cor.test(apply(abc,1,function(x) median(x,na.rm=TRUE)),obs.sens[nsclc.mek.cells],method="spearman")
+# melanoma
+abc <- matrix(NA,nrow=length(melanoma.mek.cells),ncol=N)
+rownames(abc) <- melanoma.mek.cells
+for(i in 1:N){abc[rownames(yhat.melanoma[[i]]),i] <- yhat.melanoma[[i]]}
+boxplot(t(abc),col="red")
+COR.melanoma <- c()
+for(i in 1:N){
+  predictor <- as.numeric(abc[which(!is.na(abc[,i])),i])
+  response <- as.numeric(obs.sens[rownames(abc)[which(!is.na(abc[,i]))]])
+  COR.melanoma <- c(COR.melanoma,cor.test(predictor,response,method="spearman")$p.value)
+}  
+names(COR.melanoma) <- paste("m", seq(1:N),sep="")
+melanoma.models <- names(which(COR.melanoma<.05))
 
 # ovary
 abc <- matrix(NA,nrow=length(ovary.mek.cells),ncol=N)
@@ -253,17 +290,21 @@ COR.ovary <- c()
 for(i in 1:N){
   predictor <- as.numeric(abc[which(!is.na(abc[,i])),i])
   response <- as.numeric(obs.sens[rownames(abc)[which(!is.na(abc[,i]))]])
-  roc <- roc(predictor=predictor, response=response)
-  COR.ovary <- c(COR.ovary,cor.test(predictor, response,method="spearman")$p.value)
+  COR.ovary <- c(COR.ovary,cor.test(predictor,response,method="spearman")$p.value)
 }  
+names(COR.ovary) <- paste("m", seq(1:N),sep="")
+ovary.models <- names(which(COR.ovary<.05))
 
-a <- COR.ovary <.1
-print(sum(a))
-retained <- names(!is.na(apply(abc[,a],1,function(x) median(x,na.rm=TRUE))))
-print("turbo")
-cor.test(apply(abc[,a],1,function(x) median(x,na.rm=TRUE))[retained],obs.sens[retained],method="spearman")
-print("normal")
-cor.test(apply(abc,1,function(x) median(x,na.rm=TRUE)),obs.sens[ovary.mek.cells],method="spearman")
+length(intersect(hemal.models,nsclc.models))
+length(intersect(hemal.models,hemal.models))
+length(intersect(hemal.models,hemal.models))
+length(intersect(hemal.models,melanoma.models))
+length(intersect(melanoma.models,ovary.models))
 
 
-
+ovary.models
+nsclc.models
+breast.models
+melanoma.models
+hemal.models
+crc.models

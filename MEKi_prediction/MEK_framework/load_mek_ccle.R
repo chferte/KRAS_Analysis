@@ -14,7 +14,6 @@ library(lattice)
 library(limma)
 library(caret)
 library(glmnet)
-library(snm)
 library(synapseClient)
 synapseLogin("charles.ferte@sagebase.org","charles")
 

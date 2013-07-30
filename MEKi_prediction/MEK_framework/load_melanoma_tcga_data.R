@@ -1,3 +1,4 @@
+# load tcga melanoma skin rna seq data
 
 library(synapseClient)
 library(cgdsr)
@@ -32,7 +33,7 @@ combine_probes_2_gene <- function(expr, genes, method="svd"){
   M
 }
 
-# load the breast cancer tcga
+# load the melanoma skin cancer tcga
 e <- loadEntity("syn1446183")
 brca.rnaseq <- read.table(paste(e$cacheDir,e$files,sep="/"),header=TRUE,row.names=1,comment="",quote="",sep="\t")
 

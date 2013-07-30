@@ -3,9 +3,9 @@
 # June 2, 2013
 
 # load the lung virtual drug sensitivity values
-load("/home/cferte/RESULTS/vds_lung_mut.Rda")
-y_hat <- vds
-summary(vds)
+load("/home/cferte/RESULTS/vds_skcm.Rda")
+y_hat <- apply(vds,1,median)
+names(y_hat) <- rownames(vds)
 
 #load the data
 load("/home/jguinney/data/TCGA_ds_ver2.rda")
@@ -26,10 +26,10 @@ load("/home/jguinney/data/TCGA_ds_ver2.rda")
 # load the functions to find the features
 source("/home/cferte/FELLOW/cferte/KRAS_Analysis/MEKi_prediction/MEK_framework/cellline_2_tcga_pipeline.R")
 #fMat <- build_feature_matrix(crc, gene.dict="cosmic",with.rppa=FALSE)
-fMat <- build_feature_matrix(luad, with.rppa=FALSE)
+fMat <- build_feature_matrix(skcm, with.rppa=FALSE)
 
-drug_fmat <- find_drug_features(y_hat,fMat, rep(TRUE, nrow(fMat)), 
-                                beta_threshold=10^-3,num.bootstraps=200)
+drug_fmat <- find_drug_features(y_hat,fMat, rep(TRUE, nrow(fMat)),
+                                beta_threshold=10^-3,num.bootstraps=100)
 drug <- "MEK inhibitors"
 top=30
 par(mfrow=c(1,1))
